@@ -101,6 +101,8 @@ class MyAgentProgram implements AgentProgram {
 
 	public int maxCornerX;
 	public int maxCornerY;
+	public int horCounter;
+	public int verCounter;
 
 	// moves the Agent to a random start position
 	// uses percepts to update the Agent position - only the position, other
@@ -149,9 +151,6 @@ class MyAgentProgram implements AgentProgram {
 		System.out.println("x=" + state.agent_x_position);
 		System.out.println("y=" + state.agent_y_position);
 		System.out.println("dir=" + state.agent_direction);
-
-		int worldSize;
-		int[][] searched;
 
 		// iterationCounter--;
 
@@ -258,17 +257,17 @@ class MyAgentProgram implements AgentProgram {
 					state.agent_direction = state.agent_direction + 1;
 					state.agent_last_action = state.ACTION_TURN_RIGHT;
 					return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
-					
-					
-				} else if (horCounter > 0 && verCounder > 0 && state.agent_direction == 3) {
-					
-					
+
+				} else if (horCounter > 0 && verCounter > 0 && state.agent_direction == 3) {
+
 					state.agent_last_action = state.ACTION_MOVE_FORWARD;
 					return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
 				}
 
 			}
 		}
+		state.agent_last_action = state.ACTION_MOVE_FORWARD;
+		return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
 	}
 
 	private void setWalls(int maxCornerX2, int maxCornerY2) {
