@@ -98,7 +98,7 @@ class MyAgentProgram implements AgentProgram {
 	public int bumpCounter = 0;
 	public int startDir = 4;
 	public boolean startSearch = false;
-
+	public boolean findDir = false;
 	public int maxCornerX;
 	public int maxCornerY;
 	public int horCounter;
@@ -198,8 +198,8 @@ class MyAgentProgram implements AgentProgram {
 			state.agent_last_action = state.ACTION_SUCK;
 			return LIUVacuumEnvironment.ACTION_SUCK;
 		} else {
-			if (bump) {
-				if (!startSearch) {
+			if (!startSearch) {
+				if (bump) {
 					if (startDir == 3 || startDir == 0) {
 
 						if (bumpCounter < 3) {
@@ -218,8 +218,9 @@ class MyAgentProgram implements AgentProgram {
 							maxCornerX = state.agent_x_position;
 							maxCornerY = state.agent_y_position;
 							startSearch = true;
-
+							System.out.println("max corner1");
 							setWalls(maxCornerX, maxCornerY);
+							setStartDir(state.agent_direction);
 						}
 
 					} else {
@@ -242,40 +243,73 @@ class MyAgentProgram implements AgentProgram {
 							horCounter = maxCornerX;
 							verCounter = maxCornerY;
 							startSearch = true;
-
+							System.out.println("max corner1");
 							setWalls(maxCornerX, maxCornerY);
+							setStartDir(state.agent_direction);
+							
+							
 
 						}
 					}
-				}
-
-				state.agent_last_action = state.ACTION_NONE;
-				if (state.agent_direction == 1 && state.agent_y_position == maxCornerX
-						&& state.agent_y_position == maxCornerY) {
-
-					state.agent_direction = 0;
-					state.agent_last_action = state.ACTION_TURN_LEFT;
-					return LIUVacuumEnvironment.ACTION_TURN_LEFT;
-				} else if (state.agent_y_position == maxCornerX && state.agent_y_position == maxCornerY) {
-					state.agent_direction = state.agent_direction + 1;
-					state.agent_last_action = state.ACTION_TURN_RIGHT;
-					return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
-
-				} else if (horCounter > 0 && verCounter > 0 && state.agent_direction == 0) {
-					verCounter--;
-					state.agent_last_action = state.ACTION_MOVE_FORWARD;
-					return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-				} else if (horCounter > 0 && verCounter > 0 && state.agent_direction == 3) {
-					horCounter--;
-					state.agent_last_action = state.ACTION_MOVE_FORWARD;
-					return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-				}
+				}else return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
 
 			}
 		}
 
 		state.agent_last_action = state.ACTION_NONE;
+		System.out.println("vafann");
 		if (state.agent_direction == 1 && state.agent_y_position == maxCornerX
+				&& state.agent_y_position == maxCornerY && !findDir) {
+
+			state.agent_direction = 0;
+			state.agent_last_action = state.ACTION_TURN_LEFT;
+			findDir = true;
+			return LIUVacuumEnvironment.ACTION_TURN_LEFT;
+			
+		} else if (state.agent_y_position == maxCornerX && state.agent_y_position == maxCornerY && !findDir) {
+			state.agent_direction = state.agent_direction + 1;
+			state.agent_last_action = state.ACTION_TURN_RIGHT;
+			findDir = true;
+			return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
+
+		} else if (horCounter > 0 && verCounter > 0 && state.agent_direction == 0 && findDir) { //om vi inte är i nytt hörn och går norrut
+			verCounter--;
+			state.agent_last_action = state.ACTION_MOVE_FORWARD;
+			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+			
+		} else if (horCounter > 0 && verCounter > 0 && state.agent_direction == 3 && findDir) { //om vi inte är i ett nytt hörn och vi går västerut
+			horCounter--;
+			state.agent_last_action = state.ACTION_MOVE_FORWARD;
+			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+
+		} else if (state.agent_direction == 3 && findDir && findDir) {  //Vi är i nytt hörn och har gått väster ut
+			state.agent_last_action = state.ACTION_TURN_RIGHT;
+			return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
+			
+		} else if (state.agent_last_action == state.ACTION_TURN_RIGHT && findDir) {
+			state.agent_last_action = state.ACTION_TURN_RIGHT;
+			return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
+			
+		} else if (state.agent_last_action == state.ACTION_TURN_RIGHT && findDir) {
+			state.agent_last_action = state.ACTION_TURN_RIGHT;
+			return LIUVacuumEnvironment.ACTION_TURN_RIGHT;	
+			
+		} else if(state.agent_last_action == state.ACTION_TURN_LEFT && findDir) {
+			state.agent_last_action = state.ACTION_TURN_LEFT;
+			return LIUVacuumEnvironment.ACTION_TURN_LEFT;
+		}
+		
+		
+		else {
+			state.agent_last_action = state.ACTION_TURN_LEFT;
+			return LIUVacuumEnvironment.ACTION_TURN_LEFT;
+		}
+	}
+
+	public Action setStartDir(int agent_direction) {
+		System.out.println("setstartdir");
+		state.agent_last_action = state.ACTION_NONE;
+		if (agent_direction == 1 && state.agent_y_position == maxCornerX
 				&& state.agent_y_position == maxCornerY) {
 
 			state.agent_direction = 0;
@@ -286,22 +320,18 @@ class MyAgentProgram implements AgentProgram {
 			state.agent_last_action = state.ACTION_TURN_RIGHT;
 			return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
 
-		} else if (horCounter > 0 && verCounter > 0 && state.agent_direction == 0) {
+		} else if (horCounter > 0 && verCounter > 0 && agent_direction == 0) {
 			verCounter--;
 			state.agent_last_action = state.ACTION_MOVE_FORWARD;
 			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-		} else if (horCounter > 0 && verCounter > 0 && state.agent_direction == 3) {
+		} else if (horCounter > 0 && verCounter > 0 && agent_direction == 3) {
 			horCounter--;
 			state.agent_last_action = state.ACTION_MOVE_FORWARD;
 			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-
-		} else if (state.agent_direction == 3 || state.agent_direction == 0) {
-			state.agent_last_action = state.ACTION_TURN_RIGHT;
-			return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
-		} else {
-			state.agent_last_action = state.ACTION_TURN_LEFT;
-			return LIUVacuumEnvironment.ACTION_TURN_LEFT;
+		} else { state.agent_last_action = state.ACTION_MOVE_FORWARD;
+			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
 		}
+		
 	}
 
 	private void setWalls(int maxCornerX2, int maxCornerY2) {
