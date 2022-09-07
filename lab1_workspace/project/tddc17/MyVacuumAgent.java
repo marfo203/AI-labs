@@ -101,10 +101,16 @@ class MyAgentProgram implements AgentProgram {
 	public int maxWorldArea;
 	public boolean hasTurned = false;
 	public boolean moveOneStep = false;
-	public boolean caseRightTurn = false;
+	public boolean caseWallEast = false;
 	public int caseRightTurnCounter = 1;
-	public boolean caseLeftTurn = false;
+	public boolean caseWallWest = false;
 	public int caseLeftTurnCounter = 1;
+	public int[][] tilesSearched;
+
+	public boolean turnCorner = false;
+
+	public int westWallCounter = 1;
+	public int eastWallCounter = 1;
 
 	public int maxCornerX;
 	public int maxCornerY;
@@ -206,18 +212,19 @@ class MyAgentProgram implements AgentProgram {
 			return LIUVacuumEnvironment.ACTION_SUCK;
 		} else {
 			if (bump) {
+				System.out.println("bump1");
 				if (!startSearch) {
+					System.out.println("!startsearch");
 					if (startDir == 3 || startDir == 0) {
-
+						System.out.println("startdir3");
 						if (bumpCounter < 3) {
+							System.out.println("!BumpC<3");
 							if (state.agent_direction == 0 || state.agent_direction == 1) {
-								state.agent_last_action = state.ACTION_NONE;
-								state.agent_direction = state.agent_direction + 1;
-								return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
+								System.out.println("!turnright");
+								return turnRight(state);
+
 							} else {
-								state.agent_last_action = state.ACTION_NONE;
-								state.agent_direction = state.agent_direction - 1;
-								return LIUVacuumEnvironment.ACTION_TURN_LEFT;
+								return turnLeft(state);
 							}
 
 						} else {
@@ -234,13 +241,11 @@ class MyAgentProgram implements AgentProgram {
 					} else {
 						if (bumpCounter < 2) {
 							if (state.agent_direction == 1) {
-								state.agent_last_action = state.ACTION_TURN_RIGHT;
-								state.agent_direction = state.agent_direction + 1;
-								return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
+
+								return turnRight(state);
 							} else {
-								state.agent_last_action = state.ACTION_TURN_LEFT;
-								state.agent_direction = state.agent_direction - 1;
-								return LIUVacuumEnvironment.ACTION_TURN_LEFT;
+
+								return turnLeft(state);
 							}
 
 						} else {
@@ -259,133 +264,146 @@ class MyAgentProgram implements AgentProgram {
 						}
 					}
 				}
-
-			}
-		}
-
-		// startSearch här
-		state.agent_last_action = state.ACTION_NONE;
-		// svänga ut ur hörnet norr
-		if (state.agent_direction == 1 && state.agent_x_position == maxCornerX
-				&& state.agent_y_position == maxCornerY) {
-			return turnLeft(state);
-			// svänga ut ur hörnet väst
-		} else if (state.agent_direction == 2 && state.agent_x_position == maxCornerX
-				&& state.agent_y_position == maxCornerY) {
-			return turnRight(state);
-			// Flytta väst
-		} else if (horCounter > 1 && verCounter > 1 && state.agent_direction == 3 && !moveOneStep) {
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			horCounter--;
-			System.out.println("minus hor - " + horCounter);
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-			// Flytta väst 1 steg
-		} else if (horCounter > 1 && verCounter > 1 && state.agent_direction == 3 && moveOneStep) {
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			horCounter--;
-			moveOneStep = false;
-			System.out.println("minus hor - " + horCounter);
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-			// Flytta öst
-		} else if (horCounter > 1 && verCounter > 1 && state.agent_direction == 1 && !moveOneStep) {
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			horCounter--;
-			moveOneStep = false;
-			System.out.println("minus hor - " + horCounter + " EAST");
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-			// Flytta norr
-		} else if (horCounter > 1 && verCounter > 1 && state.agent_direction == 0 && !moveOneStep) {
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			verCounter--;
-			System.out.println("minus ver - " + verCounter);
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-			// Flytta norr 1 steg
-		} else if (horCounter > 1 && verCounter > 1 && state.agent_direction == 0 && moveOneStep) {
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			verCounter--;
-			moveOneStep = false;
-			System.out.println("minus ver - " + verCounter);
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-			// Dags att svänga norr när vi går väst
-		} else if (horCounter == 1 && (state.agent_direction == 3 || state.agent_direction == 0)
-				&& state.agent_last_action != state.ACTION_TURN_LEFT) {
-			caseRightTurn = true;
-			return cornerTurn(state);
-			// Dags att svänga norr när vi går öst
-		} else if (horCounter == 1 && (state.agent_direction == 1 || state.agent_direction == 0)) {
-			caseLeftTurn = true;
-			System.out.println("Sväng norr kommer från öst");
-			return cornerTurn(state);
-			// Dags att svänga väst
-		} else if (verCounter == 1) {
-			caseLeftTurn = true;
-			return cornerTurn(state);
-			// Annars Move
-		} else if (state.agent_direction == 0 && !moveOneStep) {
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			System.out.println("bitch 0");
-			hasTurned = false;
-			horCounter = maxCornerX;
-			verCounter = maxCornerY - 1;
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-		} else if (state.agent_direction == 3 && !moveOneStep) {
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			System.out.println("bitch 3");
-			hasTurned = false;
-			verCounter = maxCornerY;
-			horCounter = maxCornerX - 1;
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-		} else {
-			System.out.println("Sista else");
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+				// Sväng ur hörnet
+			}  if (startSearch && state.agent_x_position == maxCornerX
+					&& state.agent_y_position == maxCornerY) {
+				return turnFromCorner(state);
+			
+			} else if (startSearch && state.agent_x_position
+					== 1) {
+				return caseWallWest(state);
+				
+			}else if(startSearch && state.agent_x_position == maxCornerX) {
+				return caseWallEast(state);
+				
+			}else 
+				return moveForward(state);
+				
 		}
 	}
 
-	private Action cornerTurn(MyAgentState state) {
-		if (caseRightTurn) {
-			if (caseRightTurnCounter == 1) {
-				caseRightTurnCounter++;
+	private Action goHome(MyAgentState state) {
+		if (horCounter != 1) {
+			if (state.agent_direction == 0) {
 				return turnRight(state);
-			} else if (caseRightTurnCounter == 2) {
-				System.out.println("minus ver - " + verCounter);
-				state.agent_last_action = state.ACTION_MOVE_FORWARD;
-				caseRightTurnCounter++;
-				verCounter--;
-				return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-			} else if (caseRightTurnCounter == 3) {
-				caseRightTurnCounter++;
+
+			} else if (state.agent_direction == 1) {
 				return turnRight(state);
-			} else if (caseRightTurnCounter == 4) {
-				caseRightTurn = false;
-				caseRightTurnCounter = 1;
-				horCounter = maxCornerX;
-				state.agent_last_action = state.ACTION_MOVE_FORWARD;
-				return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+			} else if (state.agent_direction == 2) {
+				return turnRight(state);
+			} else
+				return moveForward(state);
+		}
+
+		if (verCounter != 1) {
+			if (state.agent_direction == 3) {
+				return turnRight(state);
+
+			} else if (state.agent_direction == 1) {
+				return turnRight(state);
+			} else if (state.agent_direction == 2) {
+				return turnRight(state);
+			} else
+				return moveForward(state);
+
+		}else return moveForward(state);
+	}
+
+	private Action turnFromCorner(MyAgentState state) {
+		if (state.agent_direction == 0) {
+			return turnRight(state);
+
+		} else if (state.agent_direction == 1) {
+			return turnRight(state);
+		} else if (state.agent_direction == 2) {
+			return turnRight(state);
+		} else
+			return moveForward(state);
+
+	}
+
+	private Action caseWallWest(MyAgentState state) {
+		if (westWallCounter == 1) {
+			westWallCounter++;
+			System.out.println("WWR1");
+			return turnRight(state);
+
+		} else if (westWallCounter == 2) {
+			westWallCounter++;
+			return moveForward(state);
+
+		} else if (westWallCounter == 3) {
+			westWallCounter++;
+			System.out.println("WWR2");
+			return turnRight(state);
+
+		} else if (westWallCounter == 4) {
+			caseWallWest = false;
+			westWallCounter = 1;
+			System.out.println("Jaggilalrpaj");
+			return moveForward(state);
+		}
+		return moveForward(state);
+	}
+
+	private Action caseWallEast(MyAgentState state) {
+		if (eastWallCounter == 1) {
+			eastWallCounter++;
+			System.out.println("EWR1");
+			return turnLeft(state);
+
+		} else if (eastWallCounter == 2) {
+			eastWallCounter++;
+			return moveForward(state);
+
+		} else if (eastWallCounter == 3) {
+			eastWallCounter++;
+			System.out.println("WWR2");
+			return turnLeft(state);
+
+		} else if (eastWallCounter == 4) {
+			caseWallEast = false;
+			eastWallCounter = 1;
+			System.out.println("Slut på det roliga i East wall");
+			return moveForward(state);
+		}
+		return moveForward(state);
+	}
+	
+
+	private Action moveForward(MyAgentState state) {
+
+		if (state.agent_direction == 0) {
+			
+			verCounter--;
+			state.agent_last_action = state.ACTION_MOVE_FORWARD;
+			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+
+		} else if (state.agent_direction == 1) {
+			horCounter++;
+			state.agent_last_action = state.ACTION_MOVE_FORWARD;
+			if (horCounter == 1) {
+				caseWallWest = true;
 			}
-		} else if (caseLeftTurn) {
-			if (caseLeftTurnCounter == 1) {
-				caseLeftTurnCounter++;
-				return turnLeft(state);
-			} else if (caseLeftTurnCounter == 2) {
-				System.out.println("minus ver - " + verCounter);
-				state.agent_last_action = state.ACTION_MOVE_FORWARD;
-				caseLeftTurnCounter++;
-				verCounter--;
-				return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-			} else if (caseLeftTurnCounter == 3) {
-				caseLeftTurnCounter++;
-				return turnLeft(state);
-			} else if (caseLeftTurnCounter == 4) {
-				caseLeftTurn = false;
-				caseLeftTurnCounter = 1;
-				horCounter = maxCornerX;
-				state.agent_last_action = state.ACTION_MOVE_FORWARD;
-				return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+
+		} else if (state.agent_direction == 2) {
+			verCounter++;
+			state.agent_last_action = state.ACTION_MOVE_FORWARD;
+			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+
+		} else if (state.agent_direction == 3) {
+			horCounter--;
+			if (horCounter == 1) {
+				caseWallWest = true;
 			}
-		} // Sista vägen ut....
-		state.agent_last_action = state.ACTION_MOVE_FORWARD;
-		return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+			state.agent_last_action = state.ACTION_MOVE_FORWARD;
+			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+		} else {
+			System.out.println("Final resort");
+			state.agent_last_action = state.ACTION_MOVE_FORWARD;
+			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+		}
 	}
 
 	private Action turnLeft(MyAgentState state) {
