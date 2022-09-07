@@ -85,6 +85,17 @@ class MyAgentState {
 			System.out.println("");
 		}
 	}
+
+	int[] findNeighbours(MyAgentState state) {
+		int x = state.agent_x_position;
+		int y = state.agent_y_position;
+
+		int[] neighbourArr = new int[] { world[x][y - 1], world[x + 1][y], world[x][y + 1], world[x - 1][y] };
+
+		return neighbourArr;
+
+	}
+
 }
 
 class MyAgentProgram implements AgentProgram {
@@ -185,58 +196,55 @@ class MyAgentProgram implements AgentProgram {
 			return LIUVacuumEnvironment.ACTION_SUCK;
 		} else {
 			if (bump) {
-				
+
 				return turnRight(state);
 			} else {
-				
+
 				return findPath(state);
 			}
 		}
 	}
-	
-	
-	
+
 	private Action findPath(MyAgentState state) {
-		findNeighbours(state);//returns list of all neighbours: clean, wall, or unknown
-		nextTile = evaluateNeighbours(state); //returns the unknown
 		
+		//Vi måste hitta något sätt att hålla koll på koordinaterna för grannen
+		int[] neighbours;
+		neighbours = state.findNeighbours(state);// returns list of all neighbours: clean, wall, or unknown
+		nextTile = neighbours[evaluateNeighbours(neighbours)]; // returns the unknown
+
 		return null;
 	}
 
-	private void findNeighbours(MyAgentState state) {
-		int x = state.agent_x_position;
-		int y = state.agent_y_position;
-		
-		neighbourNorth = visited[x][y-1]; 
-		neighbourSouth = visited [x][y+1];
-		neighbourWest = visited [x-1][y];
-		neighbourEast = visited [x+1][y];
-		
-		neighbours.append(neighbourNorth);
-		neighbours.append(neighbourSouth);
-				
-		
+
+
+	private int evaluateNeighbours(int[] neighbours) {
+		for (int i : neighbours) {
+			if (neighbours[i] == 0) //if the neighbour is unknown, return that value
+			return i;
+		}
+	
+		return null;
 	}
 
 	private Action moveForward(MyAgentState state) {
 
 		if (state.agent_direction == 0) {
-		
+
 			state.agent_last_action = state.ACTION_MOVE_FORWARD;
 			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
 
 		} else if (state.agent_direction == 1) {
-			
+
 			state.agent_last_action = state.ACTION_MOVE_FORWARD;
 			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
 
 		} else if (state.agent_direction == 2) {
-			
+
 			state.agent_last_action = state.ACTION_MOVE_FORWARD;
 			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
 
 		} else if (state.agent_direction == 3) {
-			
+
 			state.agent_last_action = state.ACTION_MOVE_FORWARD;
 			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
 		} else {
@@ -245,7 +253,6 @@ class MyAgentProgram implements AgentProgram {
 			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
 		}
 	}
-
 
 	private Action turnLeft(MyAgentState state) {
 		if (state.agent_direction == 0) {
@@ -275,8 +282,7 @@ class MyAgentProgram implements AgentProgram {
 		return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
 	}
 
-
-	}
+}
 
 public class MyVacuumAgent extends AbstractAgent {
 	public MyVacuumAgent() {
