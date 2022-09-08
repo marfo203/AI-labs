@@ -6,7 +6,13 @@ import aima.core.agent.AgentProgram;
 import aima.core.agent.Percept;
 import aima.core.agent.impl.*;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Random;
+import java.util.Stack;
 
 class MyAgentState {
 	public int[][] world = new int[30][30];
@@ -31,6 +37,8 @@ class MyAgentState {
 	public static final int SOUTH = 2;
 	public static final int WEST = 3;
 	public int agent_direction = EAST;
+
+	public Stack<HashMap> unknownStack = new Stack<HashMap>();
 
 	MyAgentState() {
 		for (int i = 0; i < world.length; i++)
@@ -196,34 +204,105 @@ class MyAgentProgram implements AgentProgram {
 			return LIUVacuumEnvironment.ACTION_SUCK;
 		} else {
 			if (bump) {
-
-				return turnRight(state);
+				System.out.println("Bump true");
+				return findPath(state);
 			} else {
-
+				System.out.println("bump false");
 				return findPath(state);
 			}
 		}
 	}
 
 	private Action findPath(MyAgentState state) {
-		
-		//Vi måste hitta något sätt att hålla koll på koordinaterna för grannen
-		int[] neighbours;
+		System.out.println("find path");
+		// Vi måste hitta något sätt att hålla koll på koordinaterna för grannen
+		int[] neighbours = new int[4];
 		neighbours = state.findNeighbours(state);// returns list of all neighbours: clean, wall, or unknown
-		nextTile = neighbours[evaluateNeighbours(neighbours)]; // returns the unknown
 
-		return null;
+		for (int i = 0; i < neighbours.length; i++) {
+			System.out.println("neighbours" + i + ": " + neighbours[i]);
+		}
+
+		// nextTile = neighbours[evaluateNeighbours(neighbours)]; // returns the unknown
+		int index = evaluateNeighbours(neighbours, state);
+		System.out.println("intdex: " + index);
+		System.out.println("agentDir: " + state.agent_direction);
+
+		if (index == state.agent_direction) {
+
+			return moveForward(state);
+		} else {
+			return turnLeft(state);
+		}
 	}
 
+	private int evaluateNeighbours(int[] neighbours, MyAgentState state) {
+		System.out.println("nu är vi i evaluate ");
+		HashMap unknownTiles = new HashMap<Integer, Integer>();
 
-
-	private int evaluateNeighbours(int[] neighbours) {
-		for (int i : neighbours) {
-			if (neighbours[i] == 0) //if the neighbour is unknown, return that value
-			return i;
+		//Skriver ut info bara hehe
+		for (int i = 0; i < neighbours.length; i++) {
+			System.out.println("EvalArr" + i + ": " + neighbours[i]);
 		}
-	
-		return null;
+		
+		for (int j = 0; j < neighbours.length; j++) {
+
+			if (neighbours[j] == 0) {
+				System.out.println("nu är vi i evaluate neigh = 0");
+				if (j == 0) {
+					unknownTiles.put( state.agent_x_position, state.agent_y_position - 1);
+					state.unknownStack.push(unknownTiles);
+
+				} else if (neighbours[j] == 1) {
+					unknownTiles.put(state.agent_x_position + 1, state.agent_y_position);
+					state.unknownStack.push(unknownTiles);
+
+				} else if (neighbours[j] == 2) {
+					unknownTiles.put( state.agent_x_position, state.agent_y_position + 1);
+					state.unknownStack.push(unknownTiles);
+
+				} else if (neighbours[j] == 3) {
+					unknownTiles.put(state.agent_x_position - 1, state.agent_y_position);
+					state.unknownStack.push(unknownTiles);
+
+				}
+				return calculateDirection(state.unknownStack.pop(), state, j);
+			}
+		}
+		for (int i = 0; i < neighbours.length; i++) {
+			if (neighbours[i] == 2) {
+				System.out.println("nu är vi i evaluate neigh = 0");
+				if (i == 0) {
+					Arrays.fill(unknownTiles, i, state.agent_x_position, state.agent_y_position - 1);
+					state.unknownStack.push(unknownTiles);
+
+				} else if (neighbours[i] == 1) {
+					Arrays.fill(unknownTiles, i, state.agent_x_position + 1, state.agent_y_position);
+					state.unknownStack.push(unknownTiles);
+
+				} else if (neighbours[i] == 2) {
+					Arrays.fill(unknownTiles, i, state.agent_x_position, state.agent_y_position + 1);
+					state.unknownStack.push(unknownTiles);
+
+				} else if (neighbours[i] == 3) {
+					Arrays.fill(unknownTiles, i, state.agent_x_position - 1, state.agent_y_position);
+					state.unknownStack.push(unknownTiles);
+
+				}
+				return state.unknownStack.pop()[0][0][0];
+			}
+		}
+		// if no unknown is find, go to clear tile
+		return 0;
+
+	}
+
+	private int calculateDirection(Map map, MyAgentState state, int dir) {
+		
+		if (dir ==1)
+		int x = (Integer) map.get(state.agent_x_position);
+		
+		return dir;
 	}
 
 	private Action moveForward(MyAgentState state) {
