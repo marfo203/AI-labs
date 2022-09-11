@@ -43,7 +43,9 @@ class MyAgentState {
 	public static final int WEST = 3;
 	public int agent_direction = EAST;
 
-	public Stack<HashMap<Integer, Integer>> unknownStack = new Stack<HashMap<Integer, Integer>>();
+	public Stack<int[][]> unknownStack = new Stack<int[][]>();
+	public int[][] goalCoordinates = new int[1][2];
+	public boolean searchingForUnknown;
 
 	MyAgentState() {
 		for (int i = 0; i < world.length; i++)
@@ -99,16 +101,16 @@ class MyAgentState {
 		}
 	}
 
-	int[] findNeighbours(MyAgentState state) {
+	public int[] findNeighbours(MyAgentState state) {
 		int x = state.agent_x_position;
 		int y = state.agent_y_position;
 
+		System.out.println("X position: " + x);
+		System.out.println("Y position: " + y);
 		int[] neighbourArr = new int[] { world[x][y - 1], world[x + 1][y], world[x][y + 1], world[x - 1][y] };
 
 		return neighbourArr;
-
 	}
-
 }
 
 class MyAgentProgram implements AgentProgram {
@@ -204,18 +206,18 @@ class MyAgentProgram implements AgentProgram {
 		} else {
 			state.updateWorld(state.agent_x_position, state.agent_y_position, state.CLEAR);
 			state.printWorldDebug();
-			return findPath(state);
+			return findPath(state, (DynamicPercept) percept);
 		}
 	}
 
-	private Action findPath(MyAgentState state) {
+	private Action findPath(MyAgentState state, DynamicPercept percept) {
 		System.out.println("Find path function used!");
 		// Vi måste hitta något sätt att hålla koll på koordinaterna för grannen
 		int[] neighbours = new int[4];
 
 		neighbours = state.findNeighbours(state);
-		
-		//Prints list of all neighbours: clean, wall, or unknown
+
+		// Prints list of all neighbours: clean, wall, or unknown
 		for (int i = 0; i < neighbours.length; i++) {
 			System.out.println("Neighbours " + i + ": " + neighbours[i]);
 		}
@@ -227,16 +229,19 @@ class MyAgentProgram implements AgentProgram {
 				numberOfUnknown++;
 			}
 		}
-		
+
 		// nextTile = neighbours[evaluateNeighbours(neighbours)]; // returns the unknown
-		//Printar on det finns unknown grannar
+		// Printar on det finns unknown grannar
 		System.out.println("Contains Unknown: " + IntStream.of(neighbours).anyMatch(x -> x == 0));
-		
-		//IntStream.of(neighbours).anyMatch(x -> x == 0)
-		//Om vi har mer än 1 unknown granne söker vi dem med följande metod
-		if (numberOfUnknown > 1) { 			
+		System.out.println("Number of Unknown: " + numberOfUnknown);
+		// IntStream.of(neighbours).anyMatch(x -> x == 0)
+		// Om vi har mer än 1 unknown granne söker vi dem med följande metod
+		if (numberOfUnknown == 1) {
+			// Gå mot unknown-grannen
+			return moveTowardsUnknown(state, dirUnknown);
+		} else if (numberOfUnknown > 1) {
 			int index = evaluateNeighbours(neighbours, state);
-			System.out.println("intdex: " + index);
+			System.out.println("(index) dir of choosen unknown : " + index);
 			System.out.println("agentDir: " + state.agent_direction);
 			if (index == state.agent_direction) {
 				return moveForward(state);
@@ -257,7 +262,7 @@ class MyAgentProgram implements AgentProgram {
 				return turnRight(state);
 			} else if (index == 2 && state.agent_direction == 3) {
 				System.out.println(state.unknownStack + "inside a nice loop");
-				return turnRight(state);
+				return turnLeft(state);
 			} else if (index == 3 && state.agent_direction == 2) {
 				System.out.println(state.unknownStack + "inside a nice loop");
 				return turnRight(state);
@@ -267,174 +272,178 @@ class MyAgentProgram implements AgentProgram {
 			} else {
 				System.out.println(state.unknownStack + "inside a nice loop");
 				return turnRight(state);
-			} 
-		} else if (numberOfUnknown == 1) {
-			//Gå mot unknown-grannen
-			return moveTowardsUnknown(state, dirUnknown);
+			}
 		} else {
-			//Kolla om stacken innehåller unknown.
+			// Vi vet nu om hela vår lokala omgivning. Måste nu ta reda på vart ska gå
+			// vidare
+			return moveTowardsCoordinates(state, percept);
+			// Gå till random är sista utvägen
+			// return moveToRandomStartPosition(percept);
+			// return turnLeft(state);
 		}
+	}
+
+	private Action moveTowardsCoordinates(MyAgentState state, DynamicPercept percept) {
+		int curr_x = state.agent_x_position;
+		int curr_y = state.agent_y_position;
+		System.out.println("Kommit till: moveTowardsCoordinates. State is: " + state.searchingForUnknown);
+
+		if (state.searchingForUnknown == false) {
+			int[][] tempCoord = state.unknownStack.pop();
+			if(state.world[tempCoord[0][0]][tempCoord[0][1]] != 1 || tempCoord[0][0] != 0 || tempCoord[0][1] != 0) {
+				state.goalCoordinates = tempCoord;
+				state.searchingForUnknown = true;
+			} else {
+				moveTowardsCoordinates(state, percept);
+			}
+		}
+		System.out.println(
+				"The goal coordinates are: " + state.goalCoordinates[0][0] + "," + state.goalCoordinates[0][1]);
+		System.out.println("Agents coordinates: " + state.agent_x_position + "," + state.agent_y_position);
+
+		if (state.goalCoordinates[0][0] != curr_x || state.goalCoordinates[0][1] != curr_y) {
+			System.out.println("We are not at the goal coordinates");
+			// Nu jävlar ska vi gå mot "målet"
+			if ((boolean) percept.getAttribute("bump")) {
+				// Vi har krockat... Gå till random?
+				System.out.println("bump Bool" + (boolean) percept.getAttribute("bump"));
+				moveToRandomStartPosition(percept);
+			} else {
+				if (state.goalCoordinates[0][0] > curr_x) { // Målet ligger österut, sväng höger
+					return moveTowardsUnknown(state, 1);
+				} else if (state.goalCoordinates[0][0] < curr_x) { // Målet ligger startk väster ut
+					return moveTowardsUnknown(state, 3);
+				} else { // Vi står på rätt x-led
+					System.out.println("2 The goal coordinates are: " + state.goalCoordinates[0][0] + ","
+							+ state.goalCoordinates[0][1]);
+					System.out
+							.println("2 Agents coordinates: " + state.agent_x_position + "," + state.agent_y_position);
+					if (state.goalCoordinates[0][1] > curr_y) {
+						return moveTowardsUnknown(state, 2);
+					} else if (state.goalCoordinates[0][1] < curr_y) {
+						return moveTowardsUnknown(state, 0);
+					}
+				}
+			}
+
+			// We have found the unknown
+		} else if (state.goalCoordinates[0][0] == curr_x && state.goalCoordinates[0][1] == curr_y) {
+			System.out.println("We are at the goal coordinates");
+			state.searchingForUnknown = false;
+		}
+
+		System.out.println("We have come to the end of this if-statement");
+		return turnLeft(state);
 	}
 
 	private Action moveTowardsUnknown(MyAgentState state, int dirUnknown) {
+		System.out.println("Agent dir: " + state.agent_direction);
+		System.out.println("dirUnknown: " + dirUnknown);
 		if (dirUnknown == state.agent_direction) {
 			return moveForward(state);
 		} else if (dirUnknown == 0 && state.agent_direction == 1) {
-			System.out.println(state.unknownStack + "inside a nice loop");
 			return turnLeft(state);
 		} else if (dirUnknown == 0 && state.agent_direction == 2) {
-			System.out.println(state.unknownStack + "inside a nice loop");
 			return turnLeft(state);
 		} else if (dirUnknown == 1 && state.agent_direction == 0) {
-			System.out.println(state.unknownStack + "inside a nice loop");
 			return turnRight(state);
 		} else if (dirUnknown == 1 && state.agent_direction == 2) {
-			System.out.println(state.unknownStack + "inside a nice loop");
 			return turnLeft(state);
 		} else if (dirUnknown == 2 && state.agent_direction == 1) {
-			System.out.println(state.unknownStack + "inside a nice loop");
 			return turnRight(state);
 		} else if (dirUnknown == 2 && state.agent_direction == 3) {
-			System.out.println(state.unknownStack + "inside a nice loop");
 			return turnRight(state);
 		} else if (dirUnknown == 3 && state.agent_direction == 2) {
-			System.out.println(state.unknownStack + "inside a nice loop");
 			return turnRight(state);
 		} else if (dirUnknown == 3 && state.agent_direction == 0) {
-			System.out.println(state.unknownStack + "inside a nice loop");
 			return turnLeft(state);
 		} else {
-			System.out.println(state.unknownStack + "inside a nice loop");
 			return turnRight(state);
 		}
-	}
-
-	private Action findUnknown(MyAgentState state2) {
-		if (!state2.unknownStack.isEmpty()) {
-			HashMap<Integer, Integer> latestUnknown = state2.unknownStack.pop();
-			Set<Integer> set = latestUnknown.keySet();	
-		
-			System.out.println("The stack: " + state.unknownStack + " find unknown");
-
-			for (Map.Entry entry : latestUnknown.entrySet()) {
-				int key = (int) entry.getKey();
-				int value = (int) entry.getValue();
-			}
-
-			int x = 0;
-			//Null-check, otherwise crash :(
-			if (latestUnknown.get(1) != null) {
-				x = (int) latestUnknown.get(1);
-			}
-			
-			int y = 0;
-			//latestUnknown.forEach((key, value) -> x = (int) key);
-			latestUnknown.forEach((key, value) -> value = y);
-			System.out.println(x);
-			
-		}
-
-		return turnLeft(state2);
-
 	}
 
 	private int evaluateNeighbours(int[] neighbours, MyAgentState state) {
 		System.out.println("We are now in Evaluate function!");
-		int direction = 0;
-		Boolean unknownExists = false;
-		HashMap<Integer, Integer> unknownTiles = new HashMap<>();
+		int direction = -1;
+		int dirVar = -1;
+		// HashMap<Integer, Integer> unknownTiles = new HashMap<>();
 
-		//Har vi en dir=2 (clean) sparar vi den dir
-		for (int i = 0; i < neighbours.length; i++) {
-			if (neighbours[i] == 2) {
-				//Sparar direction av Clean-väg
-				direction = i;
-				System.out.println("We are now in Evaluate neigh = 2");
-			}
-		}
-		
-		//Skriver bara ut info
+		// Skriver bara ut info
 		for (int i = 0; i < neighbours.length; i++) {
 			System.out.println("EvalArr" + i + ": " + neighbours[i]);
 		}
-		
-		//ArrayList med alla riktningar som är unknown. Minst 1 är det.
+
+		// ArrayList med alla riktningar som är unknown. Minst 1 är det.
 		ArrayList<Integer> unknownNeighbours = new ArrayList<Integer>();
-		
+
+		// Lägger våra unknown heignbours i en ny lista
 		for (int j = 0; j < neighbours.length; j++) {
 			if (neighbours[j] == 0) {
-				unknownExists = true;
 				unknownNeighbours.add(j);
-				System.out.println("We are now in Evaluate neigh = 0");
-				}
+				System.out.println("Added unknown neighbour: " + j + " to list.");
+			}
 		}
-		
-		if (unknownNeighbours.size() != 0) {
-			for (int k = 0; k < unknownNeighbours.size(); k++) {
-				if (unknownNeighbours.get(k) == 0 && unknownNeighbours.get(k) != state.agent_direction) {
-					unknownTiles.put(state.agent_x_position, state.agent_y_position - 1);
-					state.unknownStack.push(unknownTiles);
-					System.out.println("The state of unknownStack: " + state.unknownStack);
-				} else if (unknownNeighbours.get(k) == 1 && unknownNeighbours.get(k) != state.agent_direction) {
-					unknownTiles.put(state.agent_x_position + 1, state.agent_y_position);
-					state.unknownStack.push(unknownTiles);
-					System.out.println("The state of unknownStack: " + state.unknownStack);
-				} else if (unknownNeighbours.get(k) == 2 && unknownNeighbours.get(k) != state.agent_direction) {
-					unknownTiles.put(state.agent_x_position, state.agent_y_position + 1);
-					state.unknownStack.push(unknownTiles);
-					System.out.println("The state of unknownStack: " + state.unknownStack);
-				} else if (unknownNeighbours.get(k) == 3 && unknownNeighbours.get(k) != state.agent_direction) {
-					unknownTiles.put(state.agent_x_position - 1, state.agent_y_position);
-					state.unknownStack.push(unknownTiles);
-					System.out.println(state.unknownStack);
-				}
-				if (!state.unknownStack.isEmpty()) {
+
+		// unknownNeighbours kommer vara minst 2 lång. Annars hade vi inte hamnat här
+		// Listan består av dir till en unknown granne.
+		for (int k = 0; k < unknownNeighbours.size(); k++) {
+			int[][] unknownTiles = new int[1][2];
+
+			if (unknownNeighbours.get(k) == 0) {
+				unknownTiles[0][0] = state.agent_x_position;
+				unknownTiles[0][1] = state.agent_y_position - 1;
+				state.unknownStack.push(unknownTiles);
+				System.out.println("The state of unknownStack: " + state.unknownStack);
+				dirVar = unknownNeighbours.get(k);
+				if (unknownNeighbours.get(k) == state.agent_direction) {
+					direction = unknownNeighbours.get(k);
 					state.unknownStack.pop();
 				}
-				unknownExists = false;
-				return k;
-			}	
-		} else {
-			//Vart vi ska gå om inga unknown neighbours
-				//state.unknownStack.pop(); 
-				return Math.abs(state.agent_direction -1);
-				//return direction;
+			} else if (unknownNeighbours.get(k) == 1) {
+				unknownTiles[0][0] = state.agent_x_position + 1;
+				unknownTiles[0][1] = state.agent_y_position;
+				state.unknownStack.push(unknownTiles);
+				System.out.println("The state of unknownStack: " + state.unknownStack);
+				dirVar = unknownNeighbours.get(k);
+				if (unknownNeighbours.get(k) == state.agent_direction) {
+					direction = unknownNeighbours.get(k);
+					state.unknownStack.pop();
+				}
+			} else if (unknownNeighbours.get(k) == 2) {
+				unknownTiles[0][0] = state.agent_x_position;
+				unknownTiles[0][1] = state.agent_y_position + 1;
+				state.unknownStack.push(unknownTiles);
+				System.out.println("The state of unknownStack: " + state.unknownStack);
+				dirVar = unknownNeighbours.get(k);
+				if (unknownNeighbours.get(k) == state.agent_direction) {
+					direction = unknownNeighbours.get(k);
+					state.unknownStack.pop();
+				}
+			} else if (unknownNeighbours.get(k) == 3) {
+				unknownTiles[0][0] = state.agent_x_position - 1;
+				unknownTiles[0][1] = state.agent_y_position;
+				state.unknownStack.push(unknownTiles);
+				System.out.println(state.unknownStack);
+				dirVar = unknownNeighbours.get(k);
+				if (unknownNeighbours.get(k) == state.agent_direction) {
+					direction = unknownNeighbours.get(k);
+					state.unknownStack.pop();
+				}
+			}
 		}
-		
-		if (unknownExists) {
+
+		if (direction != -1) {
+			return direction;
+		} else {
 			state.unknownStack.pop();
-			unknownExists = false;
+			return dirVar;
 		}
-		return direction;
 	}
+
 	// if no unknown is find, go to clear tile
-
 	private Action moveForward(MyAgentState state) {
-
-		if (state.agent_direction == 0) {
-
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-
-		} else if (state.agent_direction == 1) {
-
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-
-		} else if (state.agent_direction == 2) {
-
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-
-		} else if (state.agent_direction == 3) {
-
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-		} else {
-			System.out.println("Final resort");
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-		}
+		state.agent_last_action = state.ACTION_MOVE_FORWARD;
+		return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
 	}
 
 	private Action turnLeft(MyAgentState state) {
