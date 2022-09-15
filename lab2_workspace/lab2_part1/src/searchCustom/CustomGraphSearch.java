@@ -14,8 +14,10 @@ public class CustomGraphSearch implements SearchObject {
 
 	private HashSet<SearchNode> explored;
 	private NodeQueue frontier;
+	private ArrayList <GridPos> newFrontier;
 	protected ArrayList<SearchNode> path;
 	private boolean insertFront;
+	private SearchNode parent;
 
 	/**
 	 * The constructor tells graph search whether it should insert nodes to front or back of the frontier 
@@ -44,12 +46,45 @@ public class CustomGraphSearch implements SearchObject {
 		System.out.println("Implement CustomGraphSearch.java!");
 		
 		
+		
+		
+		
+		if (!p.isGoalState(startState)) {
+		
+		while (!frontier.isEmpty()) {
+			
+			if (insertFront) {
+				parent = frontier.removeLast();
+				
+			} else {
+				parent = frontier.removeFirst();
+				
+			}
+			
+			newFrontier = p.getReachableStatesFrom(startState);
+			
+			for (int i = 0; i < newFrontier.size(); i++) {
+				SearchNode s = new SearchNode(newFrontier.get(i), parent);
+				
+				
+				if (!explored.contains(s) ){
+					explored.add(s);
+					path = s.getPathFromRoot();
+					return path;
+				}
+			}
+			
+		}
+		}else path = parent.getPathFromRoot();
+		
+		
 		/* Some hints:
 		 * -Read early part of chapter 3 in the book!
 		 * -You are free to change anything how you wish as long as the program runs, but some structure is given to help you.
 		 * -You can Google for "javadoc <class>" if you are uncertain of what you can do with a particular Java type.
 		 * 
-		 * -SearchNodes are the nodes of the search tree and contains the relevant problem state, in this case x,y position (GridPos) of the agent 
+		 * -SearchNodes are the nodes of the search tree and contains the relevant problem state, in this case x,y position (GridPos) of 
+		 * the agent 
 		 * --You can create a new search node from a state by: SearchNode childNode = new SearchNode(childState, currentNode);
 		 * --You can also extract the state by .getState() method
 		 * --All search structures use search nodes, but the problem object only speaks in state, so you may need to convert between them 
@@ -59,11 +94,12 @@ public class CustomGraphSearch implements SearchObject {
 		 * -If you are unfamiliar with Java, the "HashSet<SearchNode>" used for the explored set means a set of SearchNode objects.
 		 * --You can add nodes to the explored set, or check if it contains a node!
 		 * 
-		 * -To get the child states (adjacent grid positions that are not walls) of a particular search node, do: ArrayList<GridPos> childStates = p.getReachableStatesFrom(currentState);
+		 * -To get the child states (adjacent grid positions that are not walls) of a particular search node, do: ArrayList<GridPos> 
+		 * childStates = p.getReachableStatesFrom(currentState);
 		 * 
 		 * -Depending on the addNodesToFront boolean variable, you may need to do something with the frontier... (see book)
 		 * 
-		 * -You can check if you have reached the goal with p.isGoalState(NodeState)
+		 * -You can check if you have reached the goal with p.isGoalState(NodeState)p.isGoalState(NodeState)
 		 * 
 		 *  When the goal is found, the path to be returned can be found by: path = node.getPathFromRoot();
 		 */
