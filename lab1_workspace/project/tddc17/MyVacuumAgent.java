@@ -6,11 +6,14 @@ import aima.core.agent.AgentProgram;
 import aima.core.agent.Percept;
 import aima.core.agent.impl.*;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -221,6 +224,7 @@ class MyAgentProgram implements AgentProgram {
 		for (int i = 0; i < neighbours.length; i++) {
 			System.out.println("Neighbours " + i + ": " + neighbours[i]);
 		}
+
 		int numberOfUnknown = 0;
 		int dirUnknown = 0;
 		for (int i = 0; i < neighbours.length; i++) {
@@ -235,6 +239,7 @@ class MyAgentProgram implements AgentProgram {
 		System.out.println("Contains Unknown: " + IntStream.of(neighbours).anyMatch(x -> x == 0));
 		System.out.println("Number of Unknown: " + numberOfUnknown);
 		// IntStream.of(neighbours).anyMatch(x -> x == 0)
+
 		// Om vi har mer än 1 unknown granne söker vi dem med följande metod
 		if (numberOfUnknown == 1) {
 			// Gå mot unknown-grannen
@@ -276,11 +281,90 @@ class MyAgentProgram implements AgentProgram {
 		} else {
 			// Vi vet nu om hela vår lokala omgivning. Måste nu ta reda på vart ska gå
 			// vidare
-			return moveTowardsCoordinates(state, percept);
+
+			// pauser denna tills vidare, kör BFS nu
+			// return moveTowardsCoordinates(state, percept);
+
+			return BFS(state, percept);
+
 			// Gå till random är sista utvägen
 			// return moveToRandomStartPosition(percept);
 			// return turnLeft(state);
 		}
+	}
+
+	public class Graph {
+		private boolean adjMatrix[][];
+		private int numVertices;
+
+		// Initialize the matrix
+		public Graph(int numVertices) {
+			this.numVertices = numVertices;
+			adjMatrix = new boolean[numVertices][numVertices];
+		}
+		// Add edges
+		public void addEdge(int i, int j) {
+			adjMatrix[i][j] = true;
+			adjMatrix[j][i] = true;
+		}
+		// Remove edges
+		public void removeEdge(int i, int j) {
+			adjMatrix[i][j] = false;
+			adjMatrix[j][i] = false;
+		}
+	}
+
+	private Action BFS(MyAgentState state, DynamicPercept percept) {
+		//This is a BFS search to find the path to unknown in the stack.
+
+		//Sparar alla tomma rutor i en stack
+		ArrayList<int[][]> clearNodes = new ArrayList<int[][]>();
+		
+		for (int i = 0; i < state.world.length; i++) {
+			for (int j = 0; j < state.world[i].length; j++) {
+				if (state.world[j][i] == state.CLEAR);
+				int[][] node = new int[1][2];
+				node[0][0] = j;
+				node[0][1] = i;
+				clearNodes.add(node);
+			}
+		}
+		//Skapar en graf för att kunna söka igenom
+		Graph g = new Graph(clearNodes.size());	
+		
+		for (int i = 0; i < clearNodes.size(); i++) {
+			int[] x = clearNodes.get(i)[0];
+			int[] y = clearNodes.get(i)[1];
+			
+			int xCoord = (int)Array.getInt(x, i);
+			int yCoord = (int)Array.getInt(y, i);
+					
+			g.addEdge(xCoord, yCoord);
+		}
+			
+		
+		LinkedList <Integer> queue = new LinkedList();
+		boolean visited[] = new boolean[V];
+		
+		visited [currentCoordinate] = true;
+		
+				
+			
+		
+		
+		
+		
+		boolean insertFront = false; //För att göra en bredden-först
+		Stack<int[][]> frontier = new Stack<int[][]>();
+		HashSet<int[][]> explored;
+		
+		private ArrayList<SearchNode> search(Problem p) {
+			explored = new HashSet<int[][]>();
+			
+			
+		}
+		
+		return null;
 	}
 
 	private Action moveTowardsCoordinates(MyAgentState state, DynamicPercept percept) {
@@ -290,7 +374,7 @@ class MyAgentProgram implements AgentProgram {
 
 		if (state.searchingForUnknown == false) {
 			int[][] tempCoord = state.unknownStack.pop();
-			if(state.world[tempCoord[0][0]][tempCoord[0][1]] != 1 || tempCoord[0][0] != 0 || tempCoord[0][1] != 0) {
+			if (state.world[tempCoord[0][0]][tempCoord[0][1]] != 1 || tempCoord[0][0] != 0 || tempCoord[0][1] != 0) {
 				state.goalCoordinates = tempCoord;
 				state.searchingForUnknown = true;
 			} else {
@@ -394,40 +478,52 @@ class MyAgentProgram implements AgentProgram {
 				unknownTiles[0][1] = state.agent_y_position - 1;
 				state.unknownStack.push(unknownTiles);
 				System.out.println("The state of unknownStack: " + state.unknownStack);
-				dirVar = unknownNeighbours.get(k);
-				if (unknownNeighbours.get(k) == state.agent_direction) {
-					direction = unknownNeighbours.get(k);
+				dirVar = 0; // Norr
+
+				// Kontrollerar om vi redan står åt rätt håll
+				if (state.agent_direction == 0) { // Står agenten i samma riktning som den okända (norr)
+					direction = 0; // Norr
 					state.unknownStack.pop();
+					break;
 				}
 			} else if (unknownNeighbours.get(k) == 1) {
 				unknownTiles[0][0] = state.agent_x_position + 1;
 				unknownTiles[0][1] = state.agent_y_position;
 				state.unknownStack.push(unknownTiles);
 				System.out.println("The state of unknownStack: " + state.unknownStack);
-				dirVar = unknownNeighbours.get(k);
-				if (unknownNeighbours.get(k) == state.agent_direction) {
-					direction = unknownNeighbours.get(k);
+				dirVar = 1;
+
+				// Kontrollerar om vi redan står åt rätt håll
+				if (state.agent_direction == 1) {
+					direction = 1;
 					state.unknownStack.pop();
+					break;
 				}
 			} else if (unknownNeighbours.get(k) == 2) {
 				unknownTiles[0][0] = state.agent_x_position;
 				unknownTiles[0][1] = state.agent_y_position + 1;
 				state.unknownStack.push(unknownTiles);
 				System.out.println("The state of unknownStack: " + state.unknownStack);
-				dirVar = unknownNeighbours.get(k);
-				if (unknownNeighbours.get(k) == state.agent_direction) {
-					direction = unknownNeighbours.get(k);
+				dirVar = 2;
+
+				// Kontrollerar om vi redan står åt rätt håll
+				if (state.agent_direction == 2) {
+					direction = 2;
 					state.unknownStack.pop();
+					break;
 				}
 			} else if (unknownNeighbours.get(k) == 3) {
 				unknownTiles[0][0] = state.agent_x_position - 1;
 				unknownTiles[0][1] = state.agent_y_position;
 				state.unknownStack.push(unknownTiles);
 				System.out.println(state.unknownStack);
-				dirVar = unknownNeighbours.get(k);
-				if (unknownNeighbours.get(k) == state.agent_direction) {
-					direction = unknownNeighbours.get(k);
+				dirVar = 3;
+
+				// Kontrollerar om vi redan står åt rätt håll
+				if (state.agent_direction == 3) {
+					direction = 3;
 					state.unknownStack.pop();
+					break;
 				}
 			}
 		}
@@ -472,6 +568,11 @@ class MyAgentProgram implements AgentProgram {
 		}
 		state.agent_last_action = state.ACTION_TURN_RIGHT;
 		return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
+	}
+
+	private Action goHome(MyAgentState state) {
+
+		return NoOpAction.NO_OP;
 	}
 
 }
