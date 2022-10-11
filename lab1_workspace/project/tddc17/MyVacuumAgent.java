@@ -301,12 +301,15 @@ class MyAgentProgram implements AgentProgram {
 		public Graph(int numVertices) {
 			this.numVertices = numVertices;
 			adjMatrix = new boolean[numVertices][numVertices];
+			System.out.println("Size of the Graph: " + numVertices);
 		}
+
 		// Add edges
 		public void addEdge(int i, int j) {
 			adjMatrix[i][j] = true;
 			adjMatrix[j][i] = true;
 		}
+
 		// Remove edges
 		public void removeEdge(int i, int j) {
 			adjMatrix[i][j] = false;
@@ -314,57 +317,90 @@ class MyAgentProgram implements AgentProgram {
 		}
 	}
 
-	private Action BFS(MyAgentState state, DynamicPercept percept) {
-		//This is a BFS search to find the path to unknown in the stack.
-
-		//Sparar alla tomma rutor i en stack
-		ArrayList<int[][]> clearNodes = new ArrayList<int[][]>();
+	private void DFSHelper(boolean[][] adj_mat, boolean[] visited, int sv) {
+		visited[sv] = true; //Markerar noden som besökt
+		int v = adj_mat.length;
+        System.out.print("Current node: " + adj_mat[sv]);
 		
-		for (int i = 0; i < state.world.length; i++) {
-			for (int j = 0; j < state.world[i].length; j++) {
-				if (state.world[j][i] == state.CLEAR);
-				int[][] node = new int[1][2];
-				node[0][0] = j;
-				node[0][1] = i;
-				clearNodes.add(node);
+		for (int i = 0; i < v; i++) {
+			if (adj_mat[sv][i] == true && visited[i] == false) {
+				//adj_mat[sv][i] == 1 && visited[i] == false
+				DFSHelper(adj_mat, visited, i); //Gå vidare till ny nod
 			}
 		}
-		//Skapar en graf för att kunna söka igenom
-		Graph g = new Graph(clearNodes.size());	
+	}
+
+	private Action BFS(MyAgentState state, DynamicPercept percept) {
+		// This is a BFS search to find the path to unknown in the stack.
+
+		// Sparar alla tomma rutor i en stack
+		ArrayList<int[]> clearNodes = new ArrayList<int[]>();
+		
+		//Lägger till alla noder vi vet är CLEAR i listan
+		for (int i = 0; i < state.world.length; i++) {
+			for (int j = 0; j < state.world[i].length; j++) {
+				if (state.world[j][i] == state.CLEAR) {
+					int[] node = new int[2];
+					node[0] = j;
+					node[1] = i;
+					clearNodes.add(node);
+				}
+			}
+		}
+		
+		// Skapar en graf för att kunna söka igenom
+		Graph g = new Graph(clearNodes.size());
+		
+		//Skapar en array för alla besökta noder
+		boolean[] visited = new boolean[clearNodes.size()];
+
+//		for (int i = 0; i < clearNodes.size(); i++) {
+//			System.out.println("x-value of clear node: " + clearNodes.get(i)[0]);
+//			System.out.println("y-value of clear node: " + clearNodes.get(i)[1]);
+//			int xCoord = clearNodes.get(i)[0];
+//			int yCoord = clearNodes.get(i)[1];
+//
+//			// Lägger till "bågar" till grafen
+//			g.addEdge(xCoord, yCoord);
+//		}
 		
 		for (int i = 0; i < clearNodes.size(); i++) {
-			int[] x = clearNodes.get(i)[0];
-			int[] y = clearNodes.get(i)[1];
+			//Tar fram x & y för noderna
+			int xCoord = clearNodes.get(i)[0];
+			int yCoord = clearNodes.get(i)[1];
 			
-			int xCoord = (int)Array.getInt(x, i);
-			int yCoord = (int)Array.getInt(y, i);
-					
-			g.addEdge(xCoord, yCoord);
+			for (int j = 0; j < clearNodes.size(); j++) {
+				int temp_xCoord = clearNodes.get(j)[0];
+				int temp_yCoord = clearNodes.get(j)[1];
+				if (temp_xCoord != xCoord && temp_yCoord != yCoord) {
+					if (temp_xCoord == xCoord || temp_yCoord == yCoord) {
+						g.addEdge(i, j);
+					}
+				}
+			}
 		}
-			
-		
-		LinkedList <Integer> queue = new LinkedList();
-		boolean visited[] = new boolean[V];
-		
-		visited [currentCoordinate] = true;
-		
-				
-			
-		
-		
-		
-		
-		boolean insertFront = false; //För att göra en bredden-först
-		Stack<int[][]> frontier = new Stack<int[][]>();
-		HashSet<int[][]> explored;
-		
-		private ArrayList<SearchNode> search(Problem p) {
-			explored = new HashSet<int[][]>();
-			
-			
+
+		for (int i = 0; i < clearNodes.size(); i++) {
+			if (visited[i] == false) {
+				//DFSHelper(clearNodes, visited, i);
+				DFSHelper(g.adjMatrix, visited, i);
+			}
 		}
-		
-		return null;
+
+//		LinkedList <Integer> queue = new LinkedList();
+//		boolean visited[] = new boolean[V];
+//		
+//		visited [currentCoordinate] = true;
+//		
+//		boolean insertFront = false; //För att göra en bredden-först
+//		Stack<int[][]> frontier = new Stack<int[][]>();
+//		HashSet<int[][]> explored;
+//		
+//		private ArrayList<SearchNode> search(Problem p) {
+//			explored = new HashSet<int[][]>();			
+//		}
+		return null; 
+
 	}
 
 	private Action moveTowardsCoordinates(MyAgentState state, DynamicPercept percept) {
