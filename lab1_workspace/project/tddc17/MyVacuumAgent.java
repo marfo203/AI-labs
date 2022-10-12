@@ -49,6 +49,8 @@ class MyAgentState {
 	public Stack<int[][]> unknownStack = new Stack<int[][]>();
 	public int[][] goalCoordinates = new int[1][2];
 	public boolean searchingForUnknown;
+	
+	public ArrayList<int[]> tempDFSNodes = new ArrayList<int[]>();
 
 	MyAgentState() {
 		for (int i = 0; i < world.length; i++)
@@ -278,11 +280,10 @@ class MyAgentProgram implements AgentProgram {
 				System.out.println(state.unknownStack + "inside a nice loop");
 				return turnRight(state);
 			}
-		} else {
-			// Vi vet nu om hela vår lokala omgivning. Måste nu ta reda på vart ska gå
-			// vidare
+		} else { // Vi vet nu om hela vår lokala omgivning, alltså numberOfUnknown=0. Måste nu ta
+					// reda på vart ska gå vidare.
 
-			// pauser denna tills vidare, kör BFS nu
+			// Pausar denna tills vidare, kör BFS nu
 			// return moveTowardsCoordinates(state, percept);
 
 			return BFS(state, percept);
@@ -317,15 +318,29 @@ class MyAgentProgram implements AgentProgram {
 		}
 	}
 
-	private void DFSHelper(boolean[][] adj_mat, boolean[] visited, int sv) {
-		visited[sv] = true; //Markerar noden som besökt
+	private void DFSHelper(boolean[][] adj_mat, boolean[] visited, int i, MyAgentState state, ArrayList<int[]> clearNodes) {
+		visited[i] = true; // Markerar noden som besökt
 		int v = adj_mat.length;
-        System.out.print("Current node: " + adj_mat[sv]);
 		
-		for (int i = 0; i < v; i++) {
-			if (adj_mat[sv][i] == true && visited[i] == false) {
-				//adj_mat[sv][i] == 1 && visited[i] == false
-				DFSHelper(adj_mat, visited, i); //Gå vidare till ny nod
+		System.out.println("Clear nodes coordinates: " + clearNodes.get(i)[0]  + ", " + clearNodes.get(i)[1]);
+		
+		//Rätt x-koord, y 1 ifrån
+		if (state.goalCoordinates[0][0] == clearNodes.get(i)[0] && Math.abs(state.goalCoordinates[0][1] - clearNodes.get(i)[1]) == 1) {
+			System.out.println("Goal coordinates with y-coord diff. are in the clearNodes list!!");	
+			System.out.println("--- Clear nodes coordinates: " + clearNodes.get(i)[0]  + ", " + clearNodes.get(i)[1]);
+			System.out.println("--- Goal nodes coordinates: " + state.goalCoordinates[0][0]  + ", " + state.goalCoordinates[0][1]);
+			
+			//Rätt y-koord, x 1 ifrån.
+		} else if (Math.abs(state.goalCoordinates[0][0] - clearNodes.get(i)[0]) == 1 && state.goalCoordinates[0][1] == clearNodes.get(i)[1]) {
+			System.out.println("Goal coordinates with x-coord diff. are in the clearNodes list!!");
+			System.out.println("--- Clear nodes coordinates: " + clearNodes.get(i)[0]  + ", " + clearNodes.get(i)[1]);
+			System.out.println("--- Goal nodes coordinates: " + state.goalCoordinates[0][0]  + ", " + state.goalCoordinates[0][1]);
+		}
+		
+		for (int j = 0; j < v; j++) {
+			if (adj_mat[i][j] == true && visited[j] == false) {
+				state.tempDFSNodes.add(clearNodes.get(j));
+				DFSHelper(adj_mat, visited, j, state, clearNodes); // Gå vidare till ny nod
 			}
 		}
 	}
@@ -333,10 +348,10 @@ class MyAgentProgram implements AgentProgram {
 	private Action BFS(MyAgentState state, DynamicPercept percept) {
 		// This is a BFS search to find the path to unknown in the stack.
 
-		// Sparar alla tomma rutor i en stack
+		// Sparar alla tomma rutor i en lista
 		ArrayList<int[]> clearNodes = new ArrayList<int[]>();
-		
-		//Lägger till alla noder vi vet är CLEAR i listan
+
+		// Lägger till alla noder i världen vi vet är CLEAR i en lista
 		for (int i = 0; i < state.world.length; i++) {
 			for (int j = 0; j < state.world[i].length; j++) {
 				if (state.world[j][i] == state.CLEAR) {
@@ -347,60 +362,67 @@ class MyAgentProgram implements AgentProgram {
 				}
 			}
 		}
-		
+
 		// Skapar en graf för att kunna söka igenom
 		Graph g = new Graph(clearNodes.size());
-		
-		//Skapar en array för alla besökta noder
+
+		// Skapar en array för alla besökta noder
 		boolean[] visited = new boolean[clearNodes.size()];
 
-//		for (int i = 0; i < clearNodes.size(); i++) {
-//			System.out.println("x-value of clear node: " + clearNodes.get(i)[0]);
-//			System.out.println("y-value of clear node: " + clearNodes.get(i)[1]);
-//			int xCoord = clearNodes.get(i)[0];
-//			int yCoord = clearNodes.get(i)[1];
-//
-//			// Lägger till "bågar" till grafen
-//			g.addEdge(xCoord, yCoord);
-//		}
-		
 		for (int i = 0; i < clearNodes.size(); i++) {
-			//Tar fram x & y för noderna
+			// Tar fram x & y för noderna
 			int xCoord = clearNodes.get(i)[0];
 			int yCoord = clearNodes.get(i)[1];
-			
+
 			for (int j = 0; j < clearNodes.size(); j++) {
 				int temp_xCoord = clearNodes.get(j)[0];
 				int temp_yCoord = clearNodes.get(j)[1];
-				if (temp_xCoord != xCoord && temp_yCoord != yCoord) {
-					if (temp_xCoord == xCoord || temp_yCoord == yCoord) {
+				// Kollar så att noden inte är samma som vi redan har valt i den yttre loopen
+				if (temp_xCoord != xCoord || temp_yCoord != yCoord) {
+					// Kollar om den nya noden har någon koorninat gemensam = potentiell granne!
+					// Samma x-koordinat och y-koordinat skiljer max 1 = granne
+					if (temp_xCoord == xCoord && Math.abs(temp_yCoord - yCoord) == 1) {
+						g.addEdge(i, j);
+
+						// Samma y-koordinat och x-koordinat skiljer max 1 = granne
+					} else if (temp_yCoord == yCoord && Math.abs(temp_xCoord - xCoord) == 1) {
 						g.addEdge(i, j);
 					}
 				}
 			}
 		}
 
+		//Ger oss mål-koordinaterna. Blir globala variabler -> 	state.goalCoordinates
+		findGoalCoordinates(state, percept);
+
 		for (int i = 0; i < clearNodes.size(); i++) {
 			if (visited[i] == false) {
-				//DFSHelper(clearNodes, visited, i);
-				DFSHelper(g.adjMatrix, visited, i);
+				DFSHelper(g.adjMatrix, visited, i, state, clearNodes);
 			}
 		}
 
-//		LinkedList <Integer> queue = new LinkedList();
-//		boolean visited[] = new boolean[V];
-//		
-//		visited [currentCoordinate] = true;
-//		
-//		boolean insertFront = false; //För att göra en bredden-först
-//		Stack<int[][]> frontier = new Stack<int[][]>();
-//		HashSet<int[][]> explored;
-//		
-//		private ArrayList<SearchNode> search(Problem p) {
-//			explored = new HashSet<int[][]>();			
-//		}
-		return null; 
+		for (int i = 0; i < state.tempDFSNodes.size(); i++) {
+			System.out.println("This is the stack with way: x: " + state.tempDFSNodes.get(i)[0] + ". y: " +state.tempDFSNodes.get(i)[1]);
+		}
 
+		return null;
+
+	}
+
+	private void findGoalCoordinates(MyAgentState state, DynamicPercept percept) {
+		System.out.println("Kommit till: findGoalCoordinates. State is: " + state.searchingForUnknown);
+
+		if (state.searchingForUnknown == false) {
+			int[][] tempCoord = state.unknownStack.pop();
+			if ((state.world[tempCoord[0][0]][tempCoord[0][1]] != 1 || tempCoord[0][0] != 0 || tempCoord[0][1] != 0) && state.world[tempCoord[0][0]][tempCoord[0][1]] == 0) {
+				state.goalCoordinates = tempCoord;
+				state.searchingForUnknown = true;
+			} else {
+				findGoalCoordinates(state, percept);
+			}
+		}
+		System.out.println(
+				"The goal coordinates are: " + state.goalCoordinates[0][0] + ", " + state.goalCoordinates[0][1]);
 	}
 
 	private Action moveTowardsCoordinates(MyAgentState state, DynamicPercept percept) {
