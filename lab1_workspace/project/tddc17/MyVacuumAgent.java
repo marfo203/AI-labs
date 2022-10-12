@@ -7,6 +7,15 @@ import aima.core.agent.Percept;
 import aima.core.agent.impl.*;
 
 import java.util.Random;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Iterator;
+
+class Vertice {
+	public int xCoordinate;
+	public int yCoordinate;
+	public Vertice parent;
+}
 
 class MyAgentState {
 	public int[][] world = new int[30][30];
@@ -31,6 +40,12 @@ class MyAgentState {
 	public static final int SOUTH = 2;
 	public static final int WEST = 3;
 	public int agent_direction = EAST;
+	
+	ArrayList<Vertice> path = new ArrayList<Vertice>();
+	ArrayList<Vertice> visited;
+	ArrayList<Vertice> queue;
+	boolean goHome = false;
+	
 
 	MyAgentState() {
 		for (int i = 0; i < world.length; i++)
@@ -93,24 +108,12 @@ class MyAgentProgram implements AgentProgram {
 	private Random random_generator = new Random();
 
 	// Here you can define your variables!
-	public int iterationCounter = 10;
+	public int iterationCounter = 10000;
 	public MyAgentState state = new MyAgentState();
-	public int bumpCounter = 0;
-	public int startDir = 4;
-	public boolean startSearch = false;
-	public int maxWorldArea;
-	public boolean hasTurned = false;
-	public boolean moveOneStep = false;
-	public boolean caseRightTurn = false;
-	public int caseRightTurnCounter = 1;
-	public boolean caseLeftTurn = false;
-	public int caseLeftTurnCounter = 1;
+	
+	public ArrayList path;
 
-	public int maxCornerX;
-	public int maxCornerY;
-	public int horCounter;
-	public int verCounter;
-
+	
 	// moves the Agent to a random start position
 	// uses percepts to update the Agent position - only the position, other
 	// percepts are ignored
@@ -133,6 +136,63 @@ class MyAgentProgram implements AgentProgram {
 		state.agent_last_action = state.ACTION_MOVE_FORWARD;
 		return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
 	}
+	
+	public void findPath() {
+		Vertice startVert = new Vertice();
+		startVert.xCoordinate = state.agent_x_position;
+		startVert.yCoordinate = state.agent_y_position;
+		
+		
+		ArrayList<Vertice> neighbours = new ArrayList<Vertice>();
+		neighbours = getNeighbours(startVert);
+		
+		state.queue = new ArrayList<Vertice>();
+		state.visited = new ArrayList<Vertice>();
+		
+		state.visited.add(startVert);
+		
+		for (int i = 0; i < neighbours.size(); i++) {
+			neighbours.get(i).parent = startVert;
+			if(state.world[neighbours.get(i).xCoordinate][neighbours.get(i).yCoordinate] != state.WALL) {
+				state.queue.add(neighbours.get(i));
+			}
+		}
+		
+		state.path = searchAlgorithm(startVert);
+		
+	}
+
+	private ArrayList<Vertice> searchAlgorithm(Vertice startVert) {
+		// TODO Auto-generated method stub
+		int searchState;
+		
+		if (state.goHome == true) {
+			searchState = 4; //Home
+		} else {
+			searchState = 0; //Unknown
+		}
+		
+		if (state.queue.isEmpty()) {
+			ArrayList<Vertice> newPath = new ArrayList<Vertice>();
+			return newPath;
+		}
+		
+		Vertice vertice = state.queue.get(0);
+		state.queue.remove(0);
+		
+		if (state.world[vertice.xCoordinate][vertice.yCoordinate] == searchState) {
+			return pathToStart(vertice, startVert);
+		} else if () {
+			
+		}
+		
+		return null;
+	}
+
+	private ArrayList<Vertice> getNeighbours(Vertice startVert) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 
 	@Override
 	public Action execute(Percept percept) {
@@ -145,8 +205,6 @@ class MyAgentProgram implements AgentProgram {
 			initnialRandomActions--;
 			state.updatePosition((DynamicPercept) percept);
 			System.out.println("Processing percepts after the last execution of moveToRandomStartPosition()");
-			startDir = state.agent_direction;
-			System.out.println("Start Dir: " + startDir);
 			state.agent_last_action = state.ACTION_SUCK;
 			return LIUVacuumEnvironment.ACTION_SUCK;
 		}
@@ -189,7 +247,6 @@ class MyAgentProgram implements AgentProgram {
 				state.updateWorld(state.agent_x_position - 1, state.agent_y_position, state.WALL);
 				break;
 			}
-			bumpCounter++;
 		}
 		if (dirt)
 			state.updateWorld(state.agent_x_position, state.agent_y_position, state.DIRT);
@@ -206,186 +263,12 @@ class MyAgentProgram implements AgentProgram {
 			return LIUVacuumEnvironment.ACTION_SUCK;
 		} else {
 			if (bump) {
-				if (!startSearch) {
-					if (startDir == 3 || startDir == 0) {
-
-						if (bumpCounter < 3) {
-							if (state.agent_direction == 0 || state.agent_direction == 1) {
-								state.agent_last_action = state.ACTION_NONE;
-								state.agent_direction = state.agent_direction + 1;
-								return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
-							} else {
-								state.agent_last_action = state.ACTION_NONE;
-								state.agent_direction = state.agent_direction - 1;
-								return LIUVacuumEnvironment.ACTION_TURN_LEFT;
-							}
-
-						} else {
-							// Nu är vi i hörnet
-							maxCornerX = state.agent_x_position;
-							maxCornerY = state.agent_y_position;
-							startSearch = true;
-
-							setWalls(maxCornerX, maxCornerY);
-							maxWorldArea = maxCornerX * maxCornerY;
-							System.out.println(maxWorldArea);
-						}
-
-					} else {
-						if (bumpCounter < 2) {
-							if (state.agent_direction == 1) {
-								state.agent_last_action = state.ACTION_TURN_RIGHT;
-								state.agent_direction = state.agent_direction + 1;
-								return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
-							} else {
-								state.agent_last_action = state.ACTION_TURN_LEFT;
-								state.agent_direction = state.agent_direction - 1;
-								return LIUVacuumEnvironment.ACTION_TURN_LEFT;
-							}
-
-						} else {
-							// Nu är vi i hörnet
-							maxCornerX = state.agent_x_position;
-							maxCornerY = state.agent_y_position;
-							horCounter = maxCornerX;
-							verCounter = maxCornerY;
-							startSearch = true;
-
-							setWalls(maxCornerX, maxCornerY);
-							maxWorldArea = maxCornerX * maxCornerY;
-							System.out.println(maxWorldArea);
-							System.out.println("Vi är nu i hörnet");
-
-						}
-					}
-				}
-
+				
 			}
 		}
-
-		// startSearch här
-		state.agent_last_action = state.ACTION_NONE;
-		// svänga ut ur hörnet norr
-		if (state.agent_direction == 1 && state.agent_x_position == maxCornerX
-				&& state.agent_y_position == maxCornerY) {
-			return turnLeft(state);
-			// svänga ut ur hörnet väst
-		} else if (state.agent_direction == 2 && state.agent_x_position == maxCornerX
-				&& state.agent_y_position == maxCornerY) {
-			return turnRight(state);
-			// Flytta väst
-		} else if (horCounter > 1 && verCounter > 1 && state.agent_direction == 3 && !moveOneStep) {
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			horCounter--;
-			System.out.println("minus hor - " + horCounter);
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-			// Flytta väst 1 steg
-		} else if (horCounter > 1 && verCounter > 1 && state.agent_direction == 3 && moveOneStep) {
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			horCounter--;
-			moveOneStep = false;
-			System.out.println("minus hor - " + horCounter);
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-			// Flytta öst
-		} else if (horCounter > 1 && verCounter > 1 && state.agent_direction == 1 && !moveOneStep) {
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			horCounter--;
-			moveOneStep = false;
-			System.out.println("minus hor - " + horCounter + " EAST");
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-			// Flytta norr
-		} else if (horCounter > 1 && verCounter > 1 && state.agent_direction == 0 && !moveOneStep) {
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			verCounter--;
-			System.out.println("minus ver - " + verCounter);
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-			// Flytta norr 1 steg
-		} else if (horCounter > 1 && verCounter > 1 && state.agent_direction == 0 && moveOneStep) {
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			verCounter--;
-			moveOneStep = false;
-			System.out.println("minus ver - " + verCounter);
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-			// Dags att svänga norr när vi går väst
-		} else if (horCounter == 1 && (state.agent_direction == 3 || state.agent_direction == 0)
-				&& state.agent_last_action != state.ACTION_TURN_LEFT) {
-			caseRightTurn = true;
-			return cornerTurn(state);
-			// Dags att svänga norr när vi går öst
-		} else if (horCounter == 1 && (state.agent_direction == 1 || state.agent_direction == 0)) {
-			caseLeftTurn = true;
-			System.out.println("Sväng norr kommer från öst");
-			return cornerTurn(state);
-			// Dags att svänga väst
-		} else if (verCounter == 1) {
-			caseLeftTurn = true;
-			return cornerTurn(state);
-			// Annars Move
-		} else if (state.agent_direction == 0 && !moveOneStep) {
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			System.out.println("bitch 0");
-			hasTurned = false;
-			horCounter = maxCornerX;
-			verCounter = maxCornerY - 1;
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-		} else if (state.agent_direction == 3 && !moveOneStep) {
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			System.out.println("bitch 3");
-			hasTurned = false;
-			verCounter = maxCornerY;
-			horCounter = maxCornerX - 1;
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-		} else {
-			System.out.println("Sista else");
-			state.agent_last_action = state.ACTION_MOVE_FORWARD;
-			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-		}
-	}
-
-	private Action cornerTurn(MyAgentState state) {
-		if (caseRightTurn) {
-			if (caseRightTurnCounter == 1) {
-				caseRightTurnCounter++;
-				return turnRight(state);
-			} else if (caseRightTurnCounter == 2) {
-				System.out.println("minus ver - " + verCounter);
-				state.agent_last_action = state.ACTION_MOVE_FORWARD;
-				caseRightTurnCounter++;
-				verCounter--;
-				return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-			} else if (caseRightTurnCounter == 3) {
-				caseRightTurnCounter++;
-				return turnRight(state);
-			} else if (caseRightTurnCounter == 4) {
-				caseRightTurn = false;
-				caseRightTurnCounter = 1;
-				horCounter = maxCornerX;
-				state.agent_last_action = state.ACTION_MOVE_FORWARD;
-				return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-			}
-		} else if (caseLeftTurn) {
-			if (caseLeftTurnCounter == 1) {
-				caseLeftTurnCounter++;
-				return turnLeft(state);
-			} else if (caseLeftTurnCounter == 2) {
-				System.out.println("minus ver - " + verCounter);
-				state.agent_last_action = state.ACTION_MOVE_FORWARD;
-				caseLeftTurnCounter++;
-				verCounter--;
-				return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-			} else if (caseLeftTurnCounter == 3) {
-				caseLeftTurnCounter++;
-				return turnLeft(state);
-			} else if (caseLeftTurnCounter == 4) {
-				caseLeftTurn = false;
-				caseLeftTurnCounter = 1;
-				horCounter = maxCornerX;
-				state.agent_last_action = state.ACTION_MOVE_FORWARD;
-				return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-			}
-		} // Sista vägen ut....
-		state.agent_last_action = state.ACTION_MOVE_FORWARD;
-		return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+		
+		//Sista vägen ut
+		return null;
 	}
 
 	private Action turnLeft(MyAgentState state) {
@@ -414,19 +297,6 @@ class MyAgentProgram implements AgentProgram {
 		}
 		state.agent_last_action = state.ACTION_TURN_RIGHT;
 		return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
-	}
-
-	private void setWalls(int maxCornerX2, int maxCornerY2) {
-		for (int i = 0; i < maxCornerY2 + 1; i++) {
-			state.updateWorld(0, i, state.WALL);
-			state.updateWorld(maxCornerX2 + 1, i, state.WALL);
-		}
-		for (int i = 0; i < maxCornerX2 + 1; i++) {
-			state.updateWorld(i, 0, state.WALL);
-			state.updateWorld(i, maxCornerX2 + 1, state.WALL);
-
-		}
-
 	}
 }
 
