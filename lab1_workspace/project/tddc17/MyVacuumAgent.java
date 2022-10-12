@@ -126,7 +126,6 @@ class MyAgentProgram implements AgentProgram {
 	public int iterationCounter = 10000;
 	public MyAgentState state = new MyAgentState();
 	private Stack<Coordinates> route = new Stack<Coordinates>();
-	private Coordinates homeCoord = new Coordinates(1, 1);
 
 	// a BFS to either unknown square or home
 	private void BFS(boolean returnHome) {
@@ -144,9 +143,7 @@ class MyAgentProgram implements AgentProgram {
 			Coordinates newPos = queue.remove();
 			visited[newPos.getXCoordinate()][newPos.getYCoordinate()] = true;
 
-			boolean goalCheck = (returnHome
-					? newPos.getXCoordinate() == homeCoord.getXCoordinate()
-							&& newPos.getYCoordinate() == homeCoord.getYCoordinate()
+			boolean goalCheck = (returnHome ? newPos.getXCoordinate() == 1 && newPos.getYCoordinate() == 1
 					: state.world[newPos.getXCoordinate()][newPos.getYCoordinate()] == state.UNKNOWN);
 
 			if (goalCheck && newPos.equals(startCoord) == false) {
@@ -173,7 +170,7 @@ class MyAgentProgram implements AgentProgram {
 				previousCoord[newPos.getXCoordinate() + 1][newPos.getYCoordinate()] = new Coordinates(
 						newPos.getXCoordinate(), newPos.getYCoordinate());
 			}
-			// adding the sourth neighbour
+			// adding the south neighbour
 			if (state.world[newPos.getXCoordinate()][newPos.getYCoordinate() + 1] != state.WALL
 					&& !visited[newPos.getXCoordinate()][newPos.getYCoordinate() + 1]) {
 				// adding to the queue
@@ -316,15 +313,19 @@ class MyAgentProgram implements AgentProgram {
 				Coordinates currentPosition = new Coordinates(state.agent_x_position, state.agent_y_position);
 				int dir = direction(currentPosition, newPosition); // 0=North, 1=East, 2=South, 3=West
 
-				if ((dir == 0 && (state.agent_direction == MyAgentState.WEST || state.agent_direction == MyAgentState.SOUTH)) || 
-						(dir == 1 && (state.agent_direction == MyAgentState.NORTH || state.agent_direction == MyAgentState.WEST)) ||
-						(dir == 2 && (state.agent_direction == MyAgentState.NORTH || state.agent_direction == MyAgentState.EAST)) ||
-						(dir == 3 && (state.agent_direction == MyAgentState.SOUTH || state.agent_direction == MyAgentState.EAST))) {
+				if ((dir == 0
+						&& (state.agent_direction == MyAgentState.WEST || state.agent_direction == MyAgentState.SOUTH))
+						|| (dir == 1 && (state.agent_direction == MyAgentState.NORTH
+								|| state.agent_direction == MyAgentState.WEST))
+						|| (dir == 2 && (state.agent_direction == MyAgentState.NORTH
+								|| state.agent_direction == MyAgentState.EAST))
+						|| (dir == 3 && (state.agent_direction == MyAgentState.SOUTH
+								|| state.agent_direction == MyAgentState.EAST))) {
 					return turnRight(state);
-				} else if ((dir == 0 && (state.agent_direction == MyAgentState.EAST)) ||
-						(dir == 1 && (state.agent_direction == MyAgentState.SOUTH)) ||
-						(dir == 2 && (state.agent_direction == MyAgentState.WEST)) ||
-						(dir == 3 && (state.agent_direction == MyAgentState.NORTH))) {
+				} else if ((dir == 0 && (state.agent_direction == MyAgentState.EAST))
+						|| (dir == 1 && (state.agent_direction == MyAgentState.SOUTH))
+						|| (dir == 2 && (state.agent_direction == MyAgentState.WEST))
+						|| (dir == 3 && (state.agent_direction == MyAgentState.NORTH))) {
 					return turnLeft(state);
 				} else {
 					route.pop();
@@ -345,7 +346,7 @@ class MyAgentProgram implements AgentProgram {
 		} else if (currentPosition.getXCoordinate() > newPosition.getXCoordinate()) {
 			return 3;
 		} else {
-			//Need a default return
+			// Need a default return
 			return -1;
 		}
 	}
