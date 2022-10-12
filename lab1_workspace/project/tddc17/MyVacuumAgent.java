@@ -7,14 +7,35 @@ import aima.core.agent.Percept;
 import aima.core.agent.impl.*;
 
 import java.util.Random;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Stack;
+import java.util.Queue;
+import java.util.LinkedList;
 
-class Vertice {
-	public int xCoordinate;
-	public int yCoordinate;
-	public Vertice parent;
+//Class for the coordinates
+class Coordinates {
+	private int xCoord = -1; // Default to value outside matrix
+	private int yCoord = -1; // Default to value outside matrix
+
+	public Coordinates(int x, int y) {
+		this.xCoord = x;
+		this.yCoord = y;
+	}
+
+	public int getXCoordinate() {
+		return xCoord;
+	}
+
+	public int getYCoordinate() {
+		return yCoord;
+	}
+
+	public boolean equals(Coordinates coord) {
+		if (this.xCoord == coord.xCoord && this.yCoord == coord.yCoord) {
+			return true;
+		} else {
+			return false;
+		}
+	}
 }
 
 class MyAgentState {
@@ -40,12 +61,6 @@ class MyAgentState {
 	public static final int SOUTH = 2;
 	public static final int WEST = 3;
 	public int agent_direction = EAST;
-	
-	ArrayList<Vertice> path = new ArrayList<Vertice>();
-	ArrayList<Vertice> visited;
-	ArrayList<Vertice> queue;
-	boolean goHome = false;
-	
 
 	MyAgentState() {
 		for (int i = 0; i < world.length; i++)
@@ -110,10 +125,87 @@ class MyAgentProgram implements AgentProgram {
 	// Here you can define your variables!
 	public int iterationCounter = 10000;
 	public MyAgentState state = new MyAgentState();
-	
-	public ArrayList path;
+	private Stack<Coordinates> route = new Stack<Coordinates>();
+	private Coordinates homeCoord = new Coordinates(1, 1);
 
-	
+	// a BFS to either unknown square or home
+	private void BFS(boolean returnHome) {
+		Coordinates startCoord = new Coordinates(state.agent_x_position, state.agent_y_position);
+		Coordinates[][] previousCoord = new Coordinates[30][30];
+		Coordinates targetCoord = new Coordinates(-1, -1);
+		Queue<Coordinates> queue = new LinkedList<Coordinates>();
+		boolean routeExist = false;
+		boolean[][] visited = new boolean[30][30];
+
+		queue.add(startCoord);
+		previousCoord[startCoord.getXCoordinate()][startCoord.getYCoordinate()] = new Coordinates(-1, -1);
+
+		while (queue.isEmpty() == false) {
+			Coordinates newPos = queue.remove();
+			visited[newPos.getXCoordinate()][newPos.getYCoordinate()] = true;
+
+			boolean goalCheck = (returnHome
+					? newPos.getXCoordinate() == homeCoord.getXCoordinate()
+							&& newPos.getYCoordinate() == homeCoord.getYCoordinate()
+					: state.world[newPos.getXCoordinate()][newPos.getYCoordinate()] == state.UNKNOWN);
+
+			if (goalCheck && newPos.equals(startCoord) == false) {
+				routeExist = true;
+				targetCoord = new Coordinates(newPos.getXCoordinate(), newPos.getYCoordinate());
+				break;
+			}
+
+			// adding the north neighbour
+			if (state.world[newPos.getXCoordinate()][newPos.getYCoordinate() - 1] != state.WALL
+					&& !visited[newPos.getXCoordinate()][newPos.getYCoordinate() - 1]) {
+				// adding to the queue
+				queue.add(new Coordinates(newPos.getXCoordinate(), newPos.getYCoordinate() - 1));
+				// adding the coords to the previous square
+				previousCoord[newPos.getXCoordinate()][newPos.getYCoordinate() - 1] = new Coordinates(
+						newPos.getXCoordinate(), newPos.getYCoordinate());
+			}
+			// adding the east neighbour
+			if (state.world[newPos.getXCoordinate() + 1][newPos.getYCoordinate()] != state.WALL
+					&& !visited[newPos.getXCoordinate() + 1][newPos.getYCoordinate()]) {
+				// adding to the queue
+				queue.add(new Coordinates(newPos.getXCoordinate() + 1, newPos.getYCoordinate()));
+				// adding the coords to the previous square
+				previousCoord[newPos.getXCoordinate() + 1][newPos.getYCoordinate()] = new Coordinates(
+						newPos.getXCoordinate(), newPos.getYCoordinate());
+			}
+			// adding the sourth neighbour
+			if (state.world[newPos.getXCoordinate()][newPos.getYCoordinate() + 1] != state.WALL
+					&& !visited[newPos.getXCoordinate()][newPos.getYCoordinate() + 1]) {
+				// adding to the queue
+				queue.add(new Coordinates(newPos.getXCoordinate(), newPos.getYCoordinate() + 1));
+				// adding the coords to the previous square
+				previousCoord[newPos.getXCoordinate()][newPos.getYCoordinate() + 1] = new Coordinates(
+						newPos.getXCoordinate(), newPos.getYCoordinate());
+			}
+			// adding the west neighbour
+			if (state.world[newPos.getXCoordinate() - 1][newPos.getYCoordinate()] != state.WALL
+					&& !visited[newPos.getXCoordinate() - 1][newPos.getYCoordinate()]) {
+				// adding to the queue
+				queue.add(new Coordinates(newPos.getXCoordinate() - 1, newPos.getYCoordinate()));
+				// adding the coords to the previous square
+				previousCoord[newPos.getXCoordinate() - 1][newPos.getYCoordinate()] = new Coordinates(
+						newPos.getXCoordinate(), newPos.getYCoordinate());
+			}
+		}
+
+		if (routeExist) {
+			Coordinates tempCoord = targetCoord;
+			while (true) {
+				if (tempCoord.equals(startCoord)) {
+					break;
+				} else {
+					route.push(tempCoord);
+					tempCoord = previousCoord[tempCoord.getXCoordinate()][tempCoord.getYCoordinate()];
+				}
+			}
+		}
+	}
+
 	// moves the Agent to a random start position
 	// uses percepts to update the Agent position - only the position, other
 	// percepts are ignored
@@ -135,63 +227,6 @@ class MyAgentProgram implements AgentProgram {
 		}
 		state.agent_last_action = state.ACTION_MOVE_FORWARD;
 		return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
-	}
-	
-	public void findPath() {
-		Vertice startVert = new Vertice();
-		startVert.xCoordinate = state.agent_x_position;
-		startVert.yCoordinate = state.agent_y_position;
-		
-		
-		ArrayList<Vertice> neighbours = new ArrayList<Vertice>();
-		neighbours = getNeighbours(startVert);
-		
-		state.queue = new ArrayList<Vertice>();
-		state.visited = new ArrayList<Vertice>();
-		
-		state.visited.add(startVert);
-		
-		for (int i = 0; i < neighbours.size(); i++) {
-			neighbours.get(i).parent = startVert;
-			if(state.world[neighbours.get(i).xCoordinate][neighbours.get(i).yCoordinate] != state.WALL) {
-				state.queue.add(neighbours.get(i));
-			}
-		}
-		
-		state.path = searchAlgorithm(startVert);
-		
-	}
-
-	private ArrayList<Vertice> searchAlgorithm(Vertice startVert) {
-		// TODO Auto-generated method stub
-		int searchState;
-		
-		if (state.goHome == true) {
-			searchState = 4; //Home
-		} else {
-			searchState = 0; //Unknown
-		}
-		
-		if (state.queue.isEmpty()) {
-			ArrayList<Vertice> newPath = new ArrayList<Vertice>();
-			return newPath;
-		}
-		
-		Vertice vertice = state.queue.get(0);
-		state.queue.remove(0);
-		
-		if (state.world[vertice.xCoordinate][vertice.yCoordinate] == searchState) {
-			return pathToStart(vertice, startVert);
-		} else if () {
-			
-		}
-		
-		return null;
-	}
-
-	private ArrayList<Vertice> getNeighbours(Vertice startVert) {
-		// TODO Auto-generated method stub
-		return null;
 	}
 
 	@Override
@@ -217,7 +252,7 @@ class MyAgentProgram implements AgentProgram {
 		System.out.println("y=" + state.agent_y_position);
 		System.out.println("dir=" + state.agent_direction);
 
-		// iterationCounter--;
+		iterationCounter--;
 
 		if (iterationCounter == 0)
 			return NoOpAction.NO_OP;
@@ -225,7 +260,6 @@ class MyAgentProgram implements AgentProgram {
 		DynamicPercept p = (DynamicPercept) percept;
 		Boolean bump = (Boolean) p.getAttribute("bump");
 		Boolean dirt = (Boolean) p.getAttribute("dirt");
-		Boolean home = (Boolean) p.getAttribute("home");
 		System.out.println("percept: " + p);
 
 		// State update based on the percept value and the last action
@@ -248,6 +282,7 @@ class MyAgentProgram implements AgentProgram {
 				break;
 			}
 		}
+
 		if (dirt)
 			state.updateWorld(state.agent_x_position, state.agent_y_position, state.DIRT);
 		else
@@ -256,19 +291,68 @@ class MyAgentProgram implements AgentProgram {
 		state.printWorldDebug();
 
 		// Next action selection based on the percept value
-
 		if (dirt) {
 			System.out.println("DIRT -> choosing SUCK action!");
 			state.agent_last_action = state.ACTION_SUCK;
 			return LIUVacuumEnvironment.ACTION_SUCK;
 		} else {
-			if (bump) {
-				
+			if (route.isEmpty() == true) {
+				BFS(false);
+				// No unknown, go home or finish
+				if (route.isEmpty() == true) {
+					// Finish if @HOME
+					if (state.agent_x_position == 1 && state.agent_y_position == 1) {
+						System.out.println("Finishes after " + iterationCounter + " iterations");
+						return NoOpAction.NO_OP;
+					} else {
+						// Find route to go home
+						BFS(true);
+					}
+				}
+			}
+
+			if (route.isEmpty() == false) {
+				Coordinates newPosition = route.peek();
+				Coordinates currentPosition = new Coordinates(state.agent_x_position, state.agent_y_position);
+				int dir = direction(currentPosition, newPosition); // 0=North, 1=East, 2=South, 3=West
+
+				if ((dir == 0 && (state.agent_direction == MyAgentState.WEST || state.agent_direction == MyAgentState.SOUTH)) || 
+						(dir == 1 && (state.agent_direction == MyAgentState.NORTH || state.agent_direction == MyAgentState.WEST)) ||
+						(dir == 2 && (state.agent_direction == MyAgentState.NORTH || state.agent_direction == MyAgentState.EAST)) ||
+						(dir == 3 && (state.agent_direction == MyAgentState.SOUTH || state.agent_direction == MyAgentState.EAST))) {
+					return turnRight(state);
+				} else if ((dir == 0 && (state.agent_direction == MyAgentState.EAST)) ||
+						(dir == 1 && (state.agent_direction == MyAgentState.SOUTH)) ||
+						(dir == 2 && (state.agent_direction == MyAgentState.WEST)) ||
+						(dir == 3 && (state.agent_direction == MyAgentState.NORTH))) {
+					return turnLeft(state);
+				} else {
+					route.pop();
+					return moveForward(state);
+				}
 			}
 		}
-		
-		//Sista vägen ut
-		return null;
+		return NoOpAction.NO_OP;
+	}
+
+	private int direction(Coordinates currentPosition, Coordinates newPosition) {
+		if (currentPosition.getYCoordinate() > newPosition.getYCoordinate()) {
+			return 0;
+		} else if (currentPosition.getXCoordinate() < newPosition.getXCoordinate()) {
+			return 1;
+		} else if (currentPosition.getYCoordinate() < newPosition.getYCoordinate()) {
+			return 2;
+		} else if (currentPosition.getXCoordinate() > newPosition.getXCoordinate()) {
+			return 3;
+		} else {
+			//Need a default return
+			return -1;
+		}
+	}
+
+	private Action moveForward(MyAgentState state) {
+		state.agent_last_action = state.ACTION_MOVE_FORWARD;
+		return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
 	}
 
 	private Action turnLeft(MyAgentState state) {
