@@ -13,20 +13,20 @@ import java.util.LinkedList;
 
 //Class for the coordinates
 class Coordinates {
-	private int xCoord = -1; // Default to value outside matrix
 	private int yCoord = -1; // Default to value outside matrix
+	private int xCoord = -1; // Default to value outside matrix
 
-	public Coordinates(int x, int y) {
-		this.xCoord = x;
-		this.yCoord = y;
-	}
-
-	public int getXCoordinate() {
-		return xCoord;
+	public Coordinates(int xCoord, int yCoord) {
+		this.xCoord = xCoord;
+		this.yCoord = yCoord;
 	}
 
 	public int getYCoordinate() {
 		return yCoord;
+	}
+	
+	public int getXCoordinate() {
+		return xCoord;
 	}
 
 	public boolean equals(Coordinates coord) {
@@ -123,38 +123,43 @@ class MyAgentProgram implements AgentProgram {
 	private Random random_generator = new Random();
 
 	// Here you can define your variables!
-	public int iterationCounter = 10000;
+	public int iterationCounter = 0;
 	public MyAgentState state = new MyAgentState();
-	private Stack<Coordinates> route = new Stack<Coordinates>();
+	private Stack<Coordinates> path = new Stack<Coordinates>();
 
 	// a BFS to either unknown square or home
 	private void BFS(boolean returnHome) {
-		Coordinates startCoord = new Coordinates(state.agent_x_position, state.agent_y_position);
+		Coordinates agentCurrentCoord = new Coordinates(state.agent_x_position, state.agent_y_position);
 		Coordinates[][] previousCoord = new Coordinates[30][30];
-		Coordinates targetCoord = new Coordinates(-1, -1);
+		Coordinates goalCoord = new Coordinates(0, 0);
 		Queue<Coordinates> queue = new LinkedList<Coordinates>();
 		boolean routeExist = false;
-		boolean[][] visited = new boolean[30][30];
+		boolean[][] checked = new boolean[30][30];
 
-		queue.add(startCoord);
-		previousCoord[startCoord.getXCoordinate()][startCoord.getYCoordinate()] = new Coordinates(-1, -1);
+		queue.add(agentCurrentCoord);
+		previousCoord[agentCurrentCoord.getXCoordinate()][agentCurrentCoord.getYCoordinate()] = new Coordinates(-1, -1);
 
 		while (queue.isEmpty() == false) {
 			Coordinates newPos = queue.remove();
-			visited[newPos.getXCoordinate()][newPos.getYCoordinate()] = true;
+			checked[newPos.getXCoordinate()][newPos.getYCoordinate()] = true;
+			
+			boolean targetCheck = false;
+			
+			if(returnHome == true) {
+				targetCheck	= newPos.getXCoordinate() == 1 && newPos.getYCoordinate() == 1;
+			} else if (returnHome == false) {
+				targetCheck = state.world[newPos.getXCoordinate()][newPos.getYCoordinate()] == state.UNKNOWN;
+			}
 
-			boolean goalCheck = (returnHome ? newPos.getXCoordinate() == 1 && newPos.getYCoordinate() == 1
-					: state.world[newPos.getXCoordinate()][newPos.getYCoordinate()] == state.UNKNOWN);
-
-			if (goalCheck && newPos.equals(startCoord) == false) {
+			if (targetCheck && newPos.equals(agentCurrentCoord) == false) {
 				routeExist = true;
-				targetCoord = new Coordinates(newPos.getXCoordinate(), newPos.getYCoordinate());
+				goalCoord = new Coordinates(newPos.getXCoordinate(), newPos.getYCoordinate());
 				break;
 			}
 
 			// adding the north neighbour
 			if (state.world[newPos.getXCoordinate()][newPos.getYCoordinate() - 1] != state.WALL
-					&& !visited[newPos.getXCoordinate()][newPos.getYCoordinate() - 1]) {
+					&& checked[newPos.getXCoordinate()][newPos.getYCoordinate() - 1] == false) {
 				// adding to the queue
 				queue.add(new Coordinates(newPos.getXCoordinate(), newPos.getYCoordinate() - 1));
 				// adding the coords to the previous square
@@ -163,7 +168,7 @@ class MyAgentProgram implements AgentProgram {
 			}
 			// adding the east neighbour
 			if (state.world[newPos.getXCoordinate() + 1][newPos.getYCoordinate()] != state.WALL
-					&& !visited[newPos.getXCoordinate() + 1][newPos.getYCoordinate()]) {
+					&& checked[newPos.getXCoordinate() + 1][newPos.getYCoordinate()] == false) {
 				// adding to the queue
 				queue.add(new Coordinates(newPos.getXCoordinate() + 1, newPos.getYCoordinate()));
 				// adding the coords to the previous square
@@ -172,7 +177,7 @@ class MyAgentProgram implements AgentProgram {
 			}
 			// adding the south neighbour
 			if (state.world[newPos.getXCoordinate()][newPos.getYCoordinate() + 1] != state.WALL
-					&& !visited[newPos.getXCoordinate()][newPos.getYCoordinate() + 1]) {
+					&& checked[newPos.getXCoordinate()][newPos.getYCoordinate() + 1] == false) {
 				// adding to the queue
 				queue.add(new Coordinates(newPos.getXCoordinate(), newPos.getYCoordinate() + 1));
 				// adding the coords to the previous square
@@ -181,7 +186,7 @@ class MyAgentProgram implements AgentProgram {
 			}
 			// adding the west neighbour
 			if (state.world[newPos.getXCoordinate() - 1][newPos.getYCoordinate()] != state.WALL
-					&& !visited[newPos.getXCoordinate() - 1][newPos.getYCoordinate()]) {
+					&& checked[newPos.getXCoordinate() - 1][newPos.getYCoordinate()] == false) {
 				// adding to the queue
 				queue.add(new Coordinates(newPos.getXCoordinate() - 1, newPos.getYCoordinate()));
 				// adding the coords to the previous square
@@ -191,12 +196,12 @@ class MyAgentProgram implements AgentProgram {
 		}
 
 		if (routeExist) {
-			Coordinates tempCoord = targetCoord;
+			Coordinates tempCoord = goalCoord;
 			while (true) {
-				if (tempCoord.equals(startCoord)) {
+				if (tempCoord.equals(agentCurrentCoord)) {
 					break;
 				} else {
-					route.push(tempCoord);
+					path.push(tempCoord);
 					tempCoord = previousCoord[tempCoord.getXCoordinate()][tempCoord.getYCoordinate()];
 				}
 			}
@@ -249,9 +254,9 @@ class MyAgentProgram implements AgentProgram {
 		System.out.println("y=" + state.agent_y_position);
 		System.out.println("dir=" + state.agent_direction);
 
-		iterationCounter--;
+		iterationCounter++;
 
-		if (iterationCounter == 0)
+		if (iterationCounter == 10000)
 			return NoOpAction.NO_OP;
 
 		DynamicPercept p = (DynamicPercept) percept;
@@ -293,10 +298,10 @@ class MyAgentProgram implements AgentProgram {
 			state.agent_last_action = state.ACTION_SUCK;
 			return LIUVacuumEnvironment.ACTION_SUCK;
 		} else {
-			if (route.isEmpty() == true) {
+			if (path.isEmpty() == true) {
 				BFS(false);
 				// No unknown, go home or finish
-				if (route.isEmpty() == true) {
+				if (path.isEmpty() == true) {
 					// Finish if @HOME
 					if (state.agent_x_position == 1 && state.agent_y_position == 1) {
 						System.out.println("Finishes after " + iterationCounter + " iterations");
@@ -308,13 +313,12 @@ class MyAgentProgram implements AgentProgram {
 				}
 			}
 
-			if (route.isEmpty() == false) {
-				Coordinates newPosition = route.peek();
+			if (path.isEmpty() == false) {
 				Coordinates currentPosition = new Coordinates(state.agent_x_position, state.agent_y_position);
+				Coordinates newPosition = path.peek();
 				int dir = direction(currentPosition, newPosition); // 0=North, 1=East, 2=South, 3=West
 
-				if ((dir == 0
-						&& (state.agent_direction == MyAgentState.WEST || state.agent_direction == MyAgentState.SOUTH))
+				if ((dir == 0 && (state.agent_direction == MyAgentState.WEST || state.agent_direction == MyAgentState.SOUTH))
 						|| (dir == 1 && (state.agent_direction == MyAgentState.NORTH
 								|| state.agent_direction == MyAgentState.WEST))
 						|| (dir == 2 && (state.agent_direction == MyAgentState.NORTH
@@ -328,7 +332,7 @@ class MyAgentProgram implements AgentProgram {
 						|| (dir == 3 && (state.agent_direction == MyAgentState.NORTH))) {
 					return turnLeft(state);
 				} else {
-					route.pop();
+					path.pop();
 					return moveForward(state);
 				}
 			}
